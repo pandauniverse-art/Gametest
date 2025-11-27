@@ -1,145 +1,71 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Game 3: Time Attack</title>
-    <style>
-        body { margin: 0; background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%); font-family: 'Pretendard', sans-serif; color: white; user-select: none; touch-action: manipulation; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
-        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.9); z-index: 100; }
-        .hidden { display: none !important; }
-        .glass-panel { background: rgba(20, 20, 30, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; }
-        
-        button { padding: 15px 50px; font-size: 24px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; background: linear-gradient(135deg, #00ff88, #00b8d4); color: #000; margin-top: 20px; }
-        
-        #hud { position: absolute; top: 20px; display: flex; gap: 40px; font-size: 24px; font-weight: bold; color: #00ff88; z-index: 10; }
-        .warning { color: #ff2a6d !important; animation: blink 0.5s infinite; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } }
-
-        #grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; perspective: 1000px; padding: 20px; }
-        .card { width: 80px; height: 80px; position: relative; transform-style: preserve-3d; transition: transform 0.5s; cursor: pointer; }
-        .card.flipped { transform: rotateY(180deg); }
-        .card.matched { visibility: hidden; opacity: 0; transition: 0.5s; }
-        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; border-radius: 15px; font-size: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .card-front { background: #222; border: 2px solid #444; }
-        .card-back { background: #111; transform: rotateY(180deg); border: 2px solid #00ff88; }
-        
-        #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 90; transition: opacity 0.1s; }
-        #back-btn { position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; }
-        
-        @media (max-width: 500px) { .card { width: 18vmin; height: 18vmin; } }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Asset Matcher: Traps</title>
+<style>
+body{margin:0;background:#111;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;height:100vh}
+#grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;perspective:1000px}
+.card{width:70px;height:70px;position:relative;transform-style:preserve-3d;transition:0.5s;cursor:pointer}
+.card.flip{transform:rotateY(180deg)}
+.face{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;border-radius:10px;box-shadow:0 4px 10px #000}
+.front{background:#333;border:2px solid #555}.back{background:#222;border:2px solid #0f0;transform:rotateY(180deg)}
+.trap .back{border-color:red;background:#300}
+#hud{font-size:24px;margin-bottom:20px;color:#0f0}
+.ui{position:absolute;background:rgba(0,0,0,0.9);width:100%;height:100%;display:flex;justify-content:center;align-items:center;flex-direction:column;z-index:10}
+.hidden{display:none}button{padding:10px 30px;font-size:20px;margin-top:20px;cursor:pointer;background:#0f0;border:none;border-radius:5px}
+#back{position:absolute;top:20px;left:20px;color:#fff;text-decoration:none;border:1px solid #fff;padding:5px}
+</style>
 </head>
 <body>
-    <a href="index.html" id="back-btn">⬅ HOME</a>
-    <div id="damage-overlay"></div>
-    
-    <div id="hud">
-        <div>TIME: <span id="time-cnt">60</span>s</div>
-        <div>SCORE: <span id="score-cnt">0</span></div>
-    </div>
-
-    <div id="grid-container"></div>
-
-    <div id="start-screen" class="ui-screen">
-        <div class="glass-panel">
-            <h1>TIME ATTACK</h1>
-            <p>Match: +3s / Wrong: -2s<br>Clear before time runs out!</p>
-            <button onclick="startGame()">START</button>
-        </div>
-    </div>
-
-    <div id="fail-screen" class="ui-screen hidden">
-        <div class="glass-panel">
-            <h1 style="color:red">TIME OVER</h1>
-            <p>Final Score: <span id="final-score">0</span></p>
-            <button onclick="startGame()">RETRY</button>
-        </div>
-    </div>
-
-    <script>
-        const assets = ['💾', '📁', '🖌️', '🎨', '🖥️', '🖱️', '📷', '🎬']; 
-        let grid = []; let flipped = []; let matched = 0; let score = 0;
-        let time = 60; let timerInterval; let isLocked = false;
-        
-        const gridEl = document.getElementById('grid-container');
-        const timeEl = document.getElementById('time-cnt');
-        const scoreEl = document.getElementById('score-cnt');
-        const dmgOverlay = document.getElementById('damage-overlay');
-
-        function startGame() {
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('fail-screen').classList.add('hidden');
-            
-            grid = [...assets, ...assets].sort(() => Math.random() - 0.5);
-            gridEl.innerHTML = '';
-            flipped = []; matched = 0; score = 0; time = 60; isLocked = false;
-            
-            scoreEl.innerText = score;
-            timeEl.innerText = time;
-            timeEl.classList.remove('warning');
-
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                time--;
-                timeEl.innerText = time;
-                if(time <= 10) timeEl.classList.add('warning');
-                if(time <= 0) gameOver();
-            }, 1000);
-
-            grid.forEach((icon, i) => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.dataset.icon = icon;
-                card.innerHTML = `<div class="card-face card-front"></div><div class="card-face card-back">${icon}</div>`;
-                card.onclick = () => flipCard(card);
-                gridEl.appendChild(card);
-            });
-        }
-
-        function flipCard(card) {
-            if (isLocked || card.classList.contains('flipped') || time <= 0) return;
-            card.classList.add('flipped');
-            flipped.push(card);
-            if (flipped.length === 2) checkMatch();
-        }
-
-        function checkMatch() {
-            isLocked = true;
-            const [c1, c2] = flipped;
-            
-            if (c1.dataset.icon === c2.dataset.icon) {
-                // 정답 (+3초)
-                time += 3; score += 100;
-                timeEl.innerText = time; scoreEl.innerText = score;
-                setTimeout(() => {
-                    c1.classList.add('matched'); c2.classList.add('matched');
-                    resetTurn();
-                    matched++;
-                    if(matched === assets.length) gameOver(true);
-                }, 500);
-            } else {
-                // 오답 (-2초)
-                time -= 2; 
-                timeEl.innerText = time;
-                // 데미지 효과
-                dmgOverlay.style.opacity = 0.5; setTimeout(()=>dmgOverlay.style.opacity=0, 100);
-                setTimeout(() => {
-                    c1.classList.remove('flipped'); c2.classList.remove('flipped');
-                    resetTurn();
-                }, 800);
-            }
-        }
-
-        function resetTurn() { flipped = []; isLocked = false; }
-
-        function gameOver(clear = false) {
-            clearInterval(timerInterval);
-            document.getElementById('fail-screen').classList.remove('hidden');
-            document.querySelector('#fail-screen h1').innerText = clear ? "CLEAR!" : "TIME OVER";
-            document.querySelector('#fail-screen h1').style.color = clear ? "#00ff88" : "red";
-            document.getElementById('final-score').innerText = score;
-        }
-    </script>
-</body>
-</html>
+<a href="index.html" id="back">🏠 HOME</a>
+<div id="hud">TIME: <span id="time">60</span>s</div>
+<div id="grid"></div>
+<div id="start" class="ui"><h1>ASSET MATCHER</h1><p>Beware of Bombs(💣) & Shuffle(🔀)</p><button onclick="game()">START</button></div>
+<div id="end" class="ui hidden"><h1 id="res"></h1><button onclick="game()">RETRY</button></div>
+<script>
+const items=['💾','📁','🖌️','🎨','📷','💣','🔀']; // 폭탄, 셔플 추가
+let cards=[],flip=[],lock=false,time=60,timer,matched=0;
+const grid=document.getElementById('grid');
+function game(){
+ document.querySelectorAll('.ui').forEach(e=>e.classList.add('hidden'));
+ let deck=[...items,...items,'💾','📁'].slice(0,16).sort(()=>Math.random()-0.5); // 16장 채우기
+ grid.innerHTML='';cards=[];flip=[];matched=0;time=60;lock=false;
+ document.getElementById('time').innerText=time;
+ if(timer)clearInterval(timer);
+ timer=setInterval(()=>{time--;document.getElementById('time').innerText=time;if(time<=0)end(false)},1000);
+ deck.forEach(item=>{
+  let c=document.createElement('div');c.className='card';if(item=='💣'||item=='🔀')c.classList.add('trap');
+  c.innerHTML=`<div class="face front"></div><div class="face back">${item}</div>`;
+  c.onclick=()=>click(c,item);grid.appendChild(c);
+ });
+}
+function click(c,item){
+ if(lock||c.classList.contains('flip')||time<=0)return;
+ c.classList.add('flip');flip.push({el:c,val:item});
+ if(flip.length==2)check();
+}
+function check(){
+ lock=true; let [a,b]=flip;
+ if(a.val==b.val){
+  if(a.val=='💣'){time-=10;shake();} // 폭탄 페널티
+  else if(a.val=='🔀'){setTimeout(shuffle,500);} // 셔플
+  else matched++;
+  setTimeout(()=>{flip=[];lock=false;if(matched>=6)end(true)},500); // 목표 달성 체크
+ }else{
+  setTimeout(()=>{a.el.classList.remove('flip');b.el.classList.remove('flip');flip=[];lock=false},1000);
+ }
+}
+function shuffle(){
+ grid.innerHTML=''; // 단순 재배치 (시간관계상 리셋 느낌)
+ let kids=Array.from(grid.children).sort(()=>Math.random()-0.5);
+ kids.forEach(k=>grid.appendChild(k));
+}
+function shake(){document.body.style.transform='translateX(5px)';setTimeout(()=>document.body.style.transform='translateX(0)',100);}
+function end(win){
+ clearInterval(timer);
+ document.getElementById('end').classList.remove('hidden');
+ document.getElementById('res').innerText=win?"CLEARED!":"TIME OVER";
+ document.getElementById('res').style.color=win?"#0f0":"#f00";
+}
+</script></body></html>
