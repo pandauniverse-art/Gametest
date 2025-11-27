@@ -1,161 +1,70 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Game 2: Neon Stack (Patched)</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Pretendard', sans-serif; user-select: none; touch-action: none; }
-        canvas { display: block; }
-        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; transition: opacity 0.3s; }
-        .hidden { opacity: 0; pointer-events: none; }
-        .glass-panel { background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; }
-        h1 { font-size: 50px; color: #ff00ff; text-shadow: 0 0 20px #ff00ff; margin-bottom: 20px; font-style: italic; }
-        p { color: white; font-size: 18px; margin-bottom: 30px; }
-        button { padding: 15px 50px; font-size: 24px; border: none; border-radius: 10px; background: #ff00ff; color: white; cursor: pointer; box-shadow: 0 0 15px #ff00ff; font-weight: bold; }
-        #back-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; backdrop-filter: blur(5px); }
-        #hud { position: absolute; top: 20px; left: 20px; color: white; z-index: 10; font-family: monospace; text-align: left; }
-        .hud-item { font-size: 20px; margin-bottom: 5px; font-weight: bold; }
-        #stage-val { color: #00e5ff; }
-        #goal-val { color: #ff00ff; }
-        
-        /* 퍼펙트 효과 텍스트 */
-        #perfect-msg {
-            position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 40px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #00ff88;
-            pointer-events: none; opacity: 0; z-index: 50;
-        }
-        .pop-anim { animation: popUp 0.5s ease-out forwards; }
-        @keyframes popUp { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Neon Stack: Fever</title>
+<style>
+body{margin:0;overflow:hidden;background:#050505;font-family:'Pretendard',sans-serif;touch-action:none}canvas{display:block}
+.ui-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.9);z-index:10}.hidden{display:none}
+h1{color:#ff00ff;text-shadow:0 0 20px #f0f;font-size:50px;margin-bottom:20px;font-style:italic}
+button{padding:15px 50px;font-size:24px;border:none;border-radius:10px;background:#f0f;color:#fff;cursor:pointer;font-weight:bold}
+#hud{position:absolute;top:20px;left:20px;color:white;font-size:20px;font-weight:bold}
+#fever-bar{position:absolute;top:60px;left:20px;width:200px;height:10px;background:#333;border:1px solid #fff}
+#fever-fill{width:0%;height:100%;background:#ffea00;transition:width 0.2s}
+#msg{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:50px;font-weight:900;color:#fff;display:none}
+.fever-bg{background:linear-gradient(45deg,#220022,#440044)!important}
+</style>
 </head>
 <body>
-    <a href="index.html" id="back-btn">⬅ HOME</a>
-    <div id="hud">
-        <div class="hud-item">STAGE: <span id="stage-val">1</span></div>
-        <div class="hud-item">GOAL: <span id="goal-val">0 / 3</span></div>
-    </div>
-    <div id="perfect-msg">PERFECT!</div>
-
-    <div id="start-screen" class="ui-screen">
-        <div class="glass-panel">
-            <h1>NEON STACK</h1>
-            <p>Perfect Match = Block Grow<br>Tap to Stack</p>
-            <button onclick="startGame()">PLAY</button>
-        </div>
-    </div>
-    <div id="fail-screen" class="ui-screen hidden">
-        <div class="glass-panel">
-            <h1 style="color:red; text-shadow:0 0 20px red;">GAME OVER</h1>
-            <p id="final-score">Stage: 1</p>
-            <button onclick="startGame()">RETRY</button>
-        </div>
-    </div>
-    <canvas id="canvas"></canvas>
-
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        let boxes = []; let currentBox = null; let mode = 'start'; let animationId;
-        let stage = 1; let stackCount = 0; let requiredStack = 3;
-        let speed = 3; let direction = 1; let baseSize = 50; let cameraY = 0; let hue = 0;
-
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
-
-        class Box {
-            constructor(x, y, w, color) { this.x = x; this.y = y; this.w = w; this.h = baseSize; this.color = color; }
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.shadowBlur = 15; ctx.shadowColor = this.color;
-                ctx.fillRect(this.x, this.y - cameraY, this.w, this.h);
-                ctx.shadowBlur = 0;
-            }
-        }
-
-        function startGame() {
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('fail-screen').classList.add('hidden');
-            boxes = []; stage = 1; stackCount = 0; requiredStack = 3; speed = 3; cameraY = 0; hue = 0;
-            updateHUD();
-            boxes.push(new Box(canvas.width/2 - 100, canvas.height - 100, 200, 'cyan'));
-            spawnBox();
-            mode = 'game'; animate();
-        }
-
-        function spawnBox() {
-            const prevBox = boxes[boxes.length - 1];
-            hue = (hue + 20) % 360;
-            const color = `hsl(${hue}, 100%, 50%)`;
-            currentBox = new Box(0, prevBox.y - baseSize, prevBox.w, color);
-            currentBox.x = (direction === 1) ? -currentBox.w : canvas.width;
-        }
-
-        function placeBox() {
-            if (mode !== 'game') return;
-            const prevBox = boxes[boxes.length - 1];
-            let diff = currentBox.x - prevBox.x;
-
-            // [밸런스 패치] 퍼펙트 판정 (오차 5px 이내)
-            if (Math.abs(diff) < 5) {
-                currentBox.x = prevBox.x; // 위치 보정 (딱 맞게)
-                diff = 0;
-                
-                // 보너스: 블록 크기 살짝 회복 (최대 300px까지)
-                if(currentBox.w < 300) currentBox.w += 10;
-                
-                // 퍼펙트 효과
-                const msg = document.getElementById('perfect-msg');
-                msg.classList.remove('pop-anim');
-                void msg.offsetWidth;
-                msg.classList.add('pop-anim');
-            } else {
-                // 일반 판정 (자르기)
-                if (Math.abs(diff) >= currentBox.w) { gameOver(); return; }
-                if (diff > 0) currentBox.w -= diff;
-                else { currentBox.w += diff; currentBox.x = prevBox.x; }
-            }
-
-            boxes.push(currentBox);
-            stackCount++;
-            if (boxes.length > 5) cameraY += baseSize;
-
-            if (stackCount >= requiredStack) {
-                stage++; requiredStack++; stackCount = 0; speed += 0.5;
-                updateHUD();
-            } else {
-                updateHUD();
-            }
-            spawnBox();
-        }
-
-        function updateHUD() {
-            document.getElementById('stage-val').innerText = stage;
-            document.getElementById('goal-val').innerText = `${stackCount} / ${requiredStack}`;
-        }
-
-        function gameOver() {
-            mode = 'over';
-            document.getElementById('fail-screen').classList.remove('hidden');
-            document.getElementById('final-score').innerText = `Stage Reached: ${stage}`;
-        }
-
-        window.addEventListener('mousedown', (e) => { if(e.target.tagName !== 'BUTTON') placeBox(); });
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space') placeBox(); });
-        document.addEventListener('touchstart', (e) => { if (e.target.tagName !== 'BUTTON') { e.preventDefault(); placeBox(); } }, {passive: false});
-
-        function animate() {
-            if (mode !== 'game') return;
-            requestAnimationFrame(animate);
-            ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            boxes.forEach(box => box.draw());
-            if (currentBox) {
-                currentBox.x += speed * direction;
-                if (currentBox.x > canvas.width) { direction = -1; currentBox.x = canvas.width; }
-                if (currentBox.x + currentBox.w < 0) { direction = 1; currentBox.x = -currentBox.w; }
-                currentBox.draw();
-            }
-        }
-    </script>
-</body>
-</html>
+<a href="index.html" style="position:absolute;top:20px;right:20px;color:#fff;text-decoration:none;border:1px solid #fff;padding:5px 10px;border-radius:5px;z-index:20">🏠 HOME</a>
+<div id="hud">SCORE: <span id="score">0</span></div>
+<div id="fever-bar"><div id="fever-fill"></div></div>
+<div id="msg">PERFECT!</div>
+<div id="start" class="ui-screen"><h1>NEON STACK</h1><button onclick="init()">PLAY</button></div>
+<div id="fail" class="ui-screen hidden"><h1 style="color:red">GAME OVER</h1><button onclick="init()">RETRY</button></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+let w,h,boxes,curr,mode,score,speed,dir,camY,combo,fever;
+const reset=()=>{w=c.width=window.innerWidth;h=c.height=window.innerHeight};window.onresize=reset;reset();
+function init(){
+ document.querySelectorAll('.ui-screen').forEach(e=>e.classList.add('hidden'));
+ boxes=[{x:w/2-100,y:h-100,w:200,h:50,c:'cyan'}];score=0;speed=3;dir=1;camY=0;combo=0;fever=false;
+ updateHUD();spawn();mode='game';loop();
+}
+function spawn(){
+ let prev=boxes[boxes.length-1];
+ curr={x:dir==1?-prev.w:w,y:prev.y-50,w:prev.w,h:50,c:`hsl(${(score*10)%360},100%,50%)`};
+}
+function place(){
+ if(mode!='game')return;
+ let prev=boxes[boxes.length-1],diff=curr.x-prev.x;
+ if(Math.abs(diff)>curr.w){mode='over';document.getElementById('fail').classList.remove('hidden');return}
+ if(Math.abs(diff)<5){
+  curr.x=prev.x;combo++;showMsg(combo>2?"FEVER!":"PERFECT!");
+  if(combo>=3){fever=true;document.body.classList.add('fever-bg');if(curr.w<300)curr.w+=20;}
+ }else{
+  combo=0;fever=false;document.body.classList.remove('fever-bg');
+  if(diff>0)curr.w-=diff;else{curr.w+=diff;curr.x=prev.x}
+ }
+ boxes.push(curr);score+=fever?2:1;speed+=0.2;if(boxes.length>5)camY+=50;
+ updateHUD();spawn();
+}
+function updateHUD(){
+ document.getElementById('score').innerText=score;
+ document.getElementById('fever-fill').style.width=Math.min(combo*33.3,100)+'%';
+}
+function showMsg(txt){
+ const m=document.getElementById('msg');m.innerText=txt;m.style.display='block';m.style.textShadow=fever?'0 0 30px gold':'0 0 20px cyan';
+ setTimeout(()=>m.style.display='none',500);
+}
+function loop(){
+ if(mode!='game')return;requestAnimationFrame(loop);
+ x.fillStyle=fever?'#200':'#050505';x.fillRect(0,0,w,h);
+ boxes.forEach(b=>{x.fillStyle=b.c;x.shadowBlur=20;x.shadowColor=b.c;x.fillRect(b.x,b.y-camY,b.w,b.h)});
+ curr.x+=speed*dir;if(curr.x>w||curr.x+curr.w<0)dir*=-1;
+ x.fillRect(curr.x,curr.y-camY,curr.w,curr.h);x.shadowBlur=0;
+}
+window.onkeydown=e=>{if(e.code=='Space')place();if(e.code=='Escape')location.href='index.html'};
+window.onmousedown=e=>{if(e.target.tagName!='BUTTON')place()};
+</script></body></html>
