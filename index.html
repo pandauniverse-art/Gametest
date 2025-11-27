@@ -3,94 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Render Rush: Dynamic Theme</title>
+    <title>Render Rush: Volume Control</title>
     <style>
+        /* [기본 설정 & CRT 효과] */
         body { 
             margin: 0; overflow: hidden; 
-            /* 기본 배경 (Stage 1) */
-            background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
-            font-family: 'Pretendard', -apple-system, sans-serif; 
-            color: white; 
+            background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
+            font-family: 'Pretendard', sans-serif; color: white; 
             user-select: none; -webkit-user-select: none; touch-action: none; 
-            transition: background 2s ease-in-out; /* 배경 부드럽게 전환 */
+            transition: background 2s ease-in-out;
         }
         
-        /* [테마 스타일 정의] */
-        body.theme-0 { background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%); } /* Blue */
-        body.theme-1 { background: radial-gradient(circle at center, #2d1b4e 0%, #10002b 100%); } /* Purple */
-        body.theme-2 { background: radial-gradient(circle at center, #4a2c00 0%, #1a0f00 100%); } /* Orange */
-        body.theme-boss { background: radial-gradient(circle at center, #4a0000 0%, #1a0000 100%); } /* Red */
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none; z-index: 999;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            animation: flicker 0.15s infinite;
+        }
+        @keyframes flicker { 0% { opacity: 0.95; } 100% { opacity: 1; } }
 
+        /* [흔들림 & 글리치 효과] */
+        .shake-small { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-medium { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-hard { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; transform-origin: center; }
+        .glitch-effect { animation: glitch-anim 0.3s infinite; filter: contrast(200%) brightness(150%); }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        @keyframes glitch-anim {
+            0% { transform: translate(0); text-shadow: -2px 0 red, 2px 0 blue; }
+            25% { transform: translate(-5px, 5px); text-shadow: 2px 0 red, -2px 0 blue; }
+            50% { transform: translate(5px, -5px); text-shadow: -2px 0 red, 2px 0 blue; }
+            75% { transform: translate(-5px, -5px); text-shadow: 2px 0 red, -2px 0 blue; }
+            100% { transform: translate(0); }
+        }
+
+        /* [UI 스타일] */
         canvas { display: block; }
-        
         .glass-panel {
-            background: rgba(20, 20, 30, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             border-radius: 20px; padding: 40px; text-align: center;
+            width: 80%; max-width: 400px;
         }
-
         .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; transition: opacity 0.5s; }
         .hidden { opacity: 0; pointer-events: none; }
         
-        h1 { 
-            font-size: 8vmin; margin: 0 0 20px 0; font-weight: 800; letter-spacing: -2px;
-            background: linear-gradient(to right, #00e5ff, #2979ff);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
+        h1 { font-size: 8vmin; margin: 0 0 20px 0; font-weight: 800; background: linear-gradient(to right, #00e5ff, #2979ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 30px rgba(0, 229, 255, 0.3); }
+        p.desc { font-size: 3.5vmin; color: #d0d0e0; margin-bottom: 30px; line-height: 1.6; }
+        p.desc span { color: #fff; font-weight: bold; }
+        
+        button { padding: 15px 50px; font-size: 4vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #00e5ff, #00b8d4); color: #000; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); margin-top: 20px; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+
+        /* [볼륨 슬라이더 스타일] */
+        .volume-control { margin-top: 20px; width: 100%; }
+        .volume-label { font-size: 14px; color: #aaa; margin-bottom: 5px; display: block; font-weight: bold; }
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent;
+        }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 8px; cursor: pointer;
+            background: #333; border-radius: 5px; border: 1px solid #555;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px; width: 20px; border-radius: 50%; background: #00e5ff;
+            cursor: pointer; -webkit-appearance: none; margin-top: -7px;
+            box-shadow: 0 0 10px #00e5ff;
         }
 
-        p.desc { font-size: 3.5vmin; color: #d0d0e0; margin-bottom: 40px; line-height: 1.6; }
-        p.desc span { color: #fff; font-weight: bold; text-shadow: 0 0 5px rgba(255,255,255,0.5); }
-        
-        button { 
-            padding: 15px 60px; font-size: 4vmin; font-weight: bold; border: none; border-radius: 50px; 
-            cursor: pointer; transition: 0.3s; 
-            background: linear-gradient(135deg, #00e5ff, #00b8d4); 
-            color: #000; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-        }
-        button:active { transform: scale(0.95); opacity: 0.8; }
-        
         #hud-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; display: none; text-align: left; }
         .hud-item { margin-bottom: 8px; }
-        .hud-label { font-size: 14px; color: rgba(255,255,255,0.6); font-weight: 600; letter-spacing: 1px; display: block; }
+        .hud-label { font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 600; letter-spacing: 1px; }
         .hud-value { font-size: 24px; font-weight: 700; color: white; font-family: 'Courier New', monospace; }
-        
-        #stage-val { transition: color 0.5s; }
+        #score-val { color: #00e5ff; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
+        #stage-val { color: #ffe600; }
         #hp-display { font-size: 24px; margin-top: 5px; letter-spacing: 2px; }
 
-        #boss-hud {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            width: 70%; max-width: 600px; z-index: 20; display: none;
-            background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 30px;
-            backdrop-filter: blur(5px); border: 1px solid rgba(255, 42, 109, 0.3);
-        }
+        #boss-hud { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 70%; max-width: 600px; z-index: 20; display: none; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 30px; backdrop-filter: blur(5px); border: 1px solid rgba(255, 42, 109, 0.3); }
         #boss-name { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #ff2a6d; letter-spacing: 2px; }
         #boss-hp-track { width: 100%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; }
         #boss-hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff2a6d, #ff5252); transition: width 0.1s linear; }
 
-        #skill-alert { 
-            position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 10vmin; font-weight: 900; color: #fff; font-style: italic;
-            text-shadow: 0 0 20px #d500f9, 4px 4px 0px rgba(0,0,0,0.5);
-            pointer-events: none; display: none; z-index: 50; white-space: nowrap;
-        }
+        #skill-alert { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 10vmin; font-weight: 900; color: #fff; font-style: italic; text-shadow: 0 0 20px #d500f9, 4px 4px 0px rgba(0,0,0,0.5); pointer-events: none; display: none; z-index: 50; white-space: nowrap; }
         .pop-anim { animation: popUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
         @keyframes popUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 50% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
 
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, transparent 50%, red 150%); opacity: 0; pointer-events: none; z-index: 90; transition: opacity 0.1s; }
-        
         #progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 6px; background: #222; z-index: 10; display: none; }
         #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00e5ff, #2979ff); transition: width 0.1s linear; box-shadow: 0 0 10px #00e5ff; }
-        
         #version-info { position: absolute; bottom: 10px; right: 10px; color: rgba(255,255,255,0.3); font-size: 10px; z-index: 5; pointer-events: none; }
     </style>
 </head>
 <body class="theme-0">
 
-    <div id="version-info">v5.0 Dynamic Theme</div>
+    <div class="crt-overlay"></div>
+    <div id="version-info">v7.0 Volume Control</div>
     <div id="damage-overlay"></div>
     <div id="skill-alert">OVERDRIVE!</div>
 
@@ -105,8 +121,14 @@
             <p class="desc">
                 <span>DRAG</span> to Move & Auto-Fire<br>
                 <span>500 PTS</span> = Ultimate<br>
-                Survive the Rendering Process
+                Defeat the Boss!
             </p>
+            
+            <div class="volume-control">
+                <span class="volume-label">VOLUME <span id="vol-text">50%</span></span>
+                <input type="range" id="vol-slider" min="0" max="1" step="0.1" value="0.5">
+            </div>
+
             <button id="start-btn">INITIALIZE</button>
         </div>
     </div>
@@ -128,14 +150,8 @@
     </div>
 
     <div id="hud-layer">
-        <div class="hud-item">
-            <span class="hud-label">STATUS</span>
-            <span class="hud-value" id="stage-val">LOADING</span>
-        </div>
-        <div class="hud-item">
-            <span class="hud-label">FRAMES</span>
-            <span class="hud-value" id="score-val">0</span>
-        </div>
+        <div class="hud-item"><span class="hud-label">STATUS</span><span class="hud-value" id="stage-val">LOADING</span></div>
+        <div class="hud-item"><span class="hud-label">FRAMES</span><span class="hud-value" id="score-val">0</span></div>
         <div id="hp-display">❤️❤️❤️❤️❤️</div>
     </div>
     
@@ -146,20 +162,38 @@
     <script>
         document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
+        // [오디오 시스템] 볼륨 변수 추가
         let audioCtx = null;
+        let masterVolume = 0.5; // 기본 볼륨 50%
+
+        // 슬라이더 이벤트
+        const volSlider = document.getElementById('vol-slider');
+        const volText = document.getElementById('vol-text');
+        
+        volSlider.addEventListener('input', (e) => {
+            masterVolume = parseFloat(e.target.value);
+            volText.innerText = Math.round(masterVolume * 100) + "%";
+            // 테스트 사운드 (선택 사항)
+            if(audioCtx && audioCtx.state === 'running') playTone(440, 100, 'sine', 0.1); 
+        });
+
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
+        // [수정] playTone 함수에 마스터 볼륨 적용
         function playTone(freq, dur, type = 'sine', vol = 0.05) {
-            if (!audioCtx) return;
+            if (!audioCtx || masterVolume <= 0) return; // 볼륨 0이면 소리 안 남
             try {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.type = type; osc.frequency.value = freq;
-                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                
+                // 최종 볼륨 = 소리별 기본 볼륨 * 마스터 볼륨
+                gain.gain.setValueAtTime(vol * masterVolume, audioCtx.currentTime);
+                
                 osc.start();
                 setTimeout(() => {
                     if(gain && audioCtx) {
@@ -233,6 +267,28 @@
         document.getElementById('start-btn').addEventListener('click', startGame);
         document.getElementById('start-btn').addEventListener('touchstart', (e)=>{e.preventDefault(); startGame();});
 
+        // [Visual Functions]
+        function shakeScreen(type) {
+            const b = document.body;
+            b.classList.remove('shake-small','shake-medium','shake-hard');
+            void b.offsetWidth;
+            if(type===1) b.classList.add('shake-small');
+            if(type===2) b.classList.add('shake-medium');
+            if(type===3) b.classList.add('shake-hard');
+            setTimeout(()=>{ b.classList.remove('shake-small','shake-medium','shake-hard'); }, 500);
+        }
+
+        function triggerGlitch() {
+            document.body.classList.add('glitch-effect');
+            setTimeout(()=>document.body.classList.remove('glitch-effect'), 300);
+        }
+
+        function setTheme(idx) {
+            document.body.className = '';
+            if (idx === 'boss') document.body.classList.add('theme-boss');
+            else document.body.classList.add(SETTINGS.stages[idx].class);
+        }
+
         // --- CLASSES ---
         class Boss {
             constructor() {
@@ -273,10 +329,12 @@
         class Missile {
             constructor(x, y, angle=0, ultimate=false) {
                 this.x = x; this.y = y;
-                this.size = ultimate ? 30 : 20; this.speed = 15;
+                this.size = ultimate ? 30 : 20;
+                this.speed = 15;
                 this.emoji = ultimate ? '🔥' : '⚡';
                 this.vx = Math.sin(angle) * this.speed; this.vy = -Math.cos(angle) * this.speed;
                 this.dmg = ultimate ? 50 : 10;
+                this.isUlt = ultimate;
             }
             update() { this.x += this.vx; this.y += this.vy; }
             draw() { ctx.fillText(this.emoji, this.x, this.y); }
@@ -332,13 +390,6 @@
 
         // --- GAME LOGIC ---
 
-        function setTheme(idx) {
-            // Body 클래스 변경으로 배경 전환
-            document.body.className = '';
-            if (idx === 'boss') document.body.classList.add('theme-boss');
-            else document.body.classList.add(SETTINGS.stages[idx].class);
-        }
-
         function shootAtPlayer(bx, by) {
             entities.bossMissiles.push(new BossMissile(bx, by, state.mouse.x, state.mouse.y));
         }
@@ -354,6 +405,8 @@
             void ui.skillAlert.offsetWidth;
             ui.skillAlert.classList.add('pop-anim');
             SFX.skill();
+            shakeScreen(2); // 필살기 화면 흔들림
+
             const cnt = 20; const spread = Math.PI/1.5;
             for(let i=0; i<cnt; i++) {
                 const angle = (-spread/2) + (spread/(cnt-1))*i;
@@ -367,6 +420,8 @@
             if(entities.player.invin > 0) return;
             entities.player.hp--; entities.player.invin = 60; entities.player.rate = 1;
             updateHP(); SFX.damage();
+            triggerGlitch(); // 글리치 효과
+            shakeScreen(3); // 강한 흔들림
             ui.dmgOverlay.style.opacity = 0.6; setTimeout(()=>ui.dmgOverlay.style.opacity=0, 100);
             if(entities.player.hp <= 0) endGame(false);
         }
@@ -388,7 +443,7 @@
             entities = { player: { size: 40, emoji: '🚀', hp: 5, invin: 0, rate: 1 }, enemies: [], missiles: [], bossMissiles: [], particles: [], items: [], texts: [], boss: null, stars: entities.stars };
             
             updateHP();
-            setTheme(0); // 초기 테마
+            setTheme(0);
             ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             loop();
         }
@@ -435,14 +490,14 @@
                 entities.boss = new Boss();
                 ui.stage.innerText = "CRITICAL ERROR";
                 ui.stage.style.color = "#ff2a6d";
-                setTheme('boss'); // 보스 테마 적용
+                setTheme('boss');
                 ui.bossHud.style.display = 'block';
                 ui.bossBar.style.width = '100%';
                 fireUltimate();
             } else if (!entities.boss) {
                 if(state.stageIdx < SETTINGS.stages.length - 1 && state.score >= SETTINGS.stages[state.stageIdx+1].limit) {
                     state.stageIdx++;
-                    setTheme(state.stageIdx); // 스테이지 테마 변경
+                    setTheme(state.stageIdx);
                 }
                 const stg = SETTINGS.stages[state.stageIdx];
                 ui.stage.innerText = stg.name;
@@ -494,6 +549,7 @@
                         b.hp -= m.dmg;
                         entities.missiles.splice(i, 1);
                         createBoom(m.x, m.y); SFX.bossHit();
+                        shakeScreen(2);
                         entities.texts.push(new FloatingText(m.x, m.y, m.dmg, "#ff0"));
                         if(b.hp <= 0) { createBoom(b.x, b.y); endGame(true); }
                     }
@@ -527,6 +583,7 @@
                         if(e.hp <= 0) {
                             e.del = true; state.score += e.score;
                             entities.texts.push(new FloatingText(e.x, e.y, `+${e.score}`, "#ff0"));
+                            shakeScreen(1);
                             if(Math.random() < 0.1) entities.items.push(new Item(e.x, e.y));
                         }
                     }
