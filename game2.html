@@ -1,70 +1,290 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Neon Stack: Fever</title>
-<style>
-body{margin:0;overflow:hidden;background:#050505;font-family:'Pretendard',sans-serif;touch-action:none}canvas{display:block}
-.ui-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.9);z-index:10}.hidden{display:none}
-h1{color:#ff00ff;text-shadow:0 0 20px #f0f;font-size:50px;margin-bottom:20px;font-style:italic}
-button{padding:15px 50px;font-size:24px;border:none;border-radius:10px;background:#f0f;color:#fff;cursor:pointer;font-weight:bold}
-#hud{position:absolute;top:20px;left:20px;color:white;font-size:20px;font-weight:bold}
-#fever-bar{position:absolute;top:60px;left:20px;width:200px;height:10px;background:#333;border:1px solid #fff}
-#fever-fill{width:0%;height:100%;background:#ffea00;transition:width 0.2s}
-#msg{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);font-size:50px;font-weight:900;color:#fff;display:none}
-.fever-bg{background:linear-gradient(45deg,#220022,#440044)!important}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game 2: Neon Stack Fixed</title>
+    <style>
+        body { 
+            margin: 0; overflow: hidden; background-color: #050505; 
+            font-family: 'Pretendard', sans-serif; user-select: none; touch-action: none; 
+        }
+        canvas { display: block; }
+        
+        /* 공통 UI 스타일 */
+        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; transition: opacity 0.3s; }
+        .hidden { opacity: 0; pointer-events: none; }
+        .glass-panel { background: rgba(20, 20, 30, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; }
+        
+        h1 { font-size: 50px; color: #ff00ff; text-shadow: 0 0 20px #ff00ff; margin-bottom: 20px; font-style: italic; }
+        p { color: white; font-size: 18px; margin-bottom: 30px; line-height: 1.5; }
+        button { padding: 15px 50px; font-size: 24px; border: none; border-radius: 10px; background: #ff00ff; color: white; cursor: pointer; box-shadow: 0 0 15px #ff00ff; font-weight: bold; margin-top: 10px; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+        
+        /* 뒤로가기 버튼 */
+        #back-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; backdrop-filter: blur(5px); }
+        
+        /* HUD (점수판) */
+        #hud { position: absolute; top: 20px; left: 20px; color: white; z-index: 10; font-family: monospace; text-align: left; }
+        .hud-item { font-size: 20px; margin-bottom: 5px; font-weight: bold; }
+        #stage-val { color: #00e5ff; }
+        #goal-val { color: #ff00ff; }
+
+        /* 메시지 효과 */
+        #msg {
+            position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 50px; font-weight: 900; color: #fff; text-shadow: 0 0 20px gold;
+            pointer-events: none; opacity: 0; z-index: 50; white-space: nowrap;
+        }
+        .pop-anim { animation: popUp 0.8s ease-out forwards; }
+        @keyframes popUp { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+        
+        /* 피버 배경 */
+        .fever-bg { background: radial-gradient(circle, #400040 0%, #000 100%) !important; }
+    </style>
 </head>
 <body>
-<a href="index.html" style="position:absolute;top:20px;right:20px;color:#fff;text-decoration:none;border:1px solid #fff;padding:5px 10px;border-radius:5px;z-index:20">🏠 HOME</a>
-<div id="hud">SCORE: <span id="score">0</span></div>
-<div id="fever-bar"><div id="fever-fill"></div></div>
-<div id="msg">PERFECT!</div>
-<div id="start" class="ui-screen"><h1>NEON STACK</h1><button onclick="init()">PLAY</button></div>
-<div id="fail" class="ui-screen hidden"><h1 style="color:red">GAME OVER</h1><button onclick="init()">RETRY</button></div>
-<canvas id="c"></canvas>
-<script>
-const c=document.getElementById('c'),x=c.getContext('2d');
-let w,h,boxes,curr,mode,score,speed,dir,camY,combo,fever;
-const reset=()=>{w=c.width=window.innerWidth;h=c.height=window.innerHeight};window.onresize=reset;reset();
-function init(){
- document.querySelectorAll('.ui-screen').forEach(e=>e.classList.add('hidden'));
- boxes=[{x:w/2-100,y:h-100,w:200,h:50,c:'cyan'}];score=0;speed=3;dir=1;camY=0;combo=0;fever=false;
- updateHUD();spawn();mode='game';loop();
-}
-function spawn(){
- let prev=boxes[boxes.length-1];
- curr={x:dir==1?-prev.w:w,y:prev.y-50,w:prev.w,h:50,c:`hsl(${(score*10)%360},100%,50%)`};
-}
-function place(){
- if(mode!='game')return;
- let prev=boxes[boxes.length-1],diff=curr.x-prev.x;
- if(Math.abs(diff)>curr.w){mode='over';document.getElementById('fail').classList.remove('hidden');return}
- if(Math.abs(diff)<5){
-  curr.x=prev.x;combo++;showMsg(combo>2?"FEVER!":"PERFECT!");
-  if(combo>=3){fever=true;document.body.classList.add('fever-bg');if(curr.w<300)curr.w+=20;}
- }else{
-  combo=0;fever=false;document.body.classList.remove('fever-bg');
-  if(diff>0)curr.w-=diff;else{curr.w+=diff;curr.x=prev.x}
- }
- boxes.push(curr);score+=fever?2:1;speed+=0.2;if(boxes.length>5)camY+=50;
- updateHUD();spawn();
-}
-function updateHUD(){
- document.getElementById('score').innerText=score;
- document.getElementById('fever-fill').style.width=Math.min(combo*33.3,100)+'%';
-}
-function showMsg(txt){
- const m=document.getElementById('msg');m.innerText=txt;m.style.display='block';m.style.textShadow=fever?'0 0 30px gold':'0 0 20px cyan';
- setTimeout(()=>m.style.display='none',500);
-}
-function loop(){
- if(mode!='game')return;requestAnimationFrame(loop);
- x.fillStyle=fever?'#200':'#050505';x.fillRect(0,0,w,h);
- boxes.forEach(b=>{x.fillStyle=b.c;x.shadowBlur=20;x.shadowColor=b.c;x.fillRect(b.x,b.y-camY,b.w,b.h)});
- curr.x+=speed*dir;if(curr.x>w||curr.x+curr.w<0)dir*=-1;
- x.fillRect(curr.x,curr.y-camY,curr.w,curr.h);x.shadowBlur=0;
-}
-window.onkeydown=e=>{if(e.code=='Space')place();if(e.code=='Escape')location.href='index.html'};
-window.onmousedown=e=>{if(e.target.tagName!='BUTTON')place()};
-</script></body></html>
+    <a href="index.html" id="back-btn">⬅ HOME</a>
+    
+    <div id="hud">
+        <div class="hud-item">STAGE: <span id="stage-val">1</span></div>
+        <div class="hud-item">GOAL: <span id="goal-val">0 / 3</span></div>
+        <div class="hud-item">SCORE: <span id="score-val">0</span></div>
+    </div>
+
+    <div id="msg">PERFECT!</div>
+
+    <div id="start-screen" class="ui-screen">
+        <div class="glass-panel">
+            <h1>NEON STACK</h1>
+            <p>Stack blocks high!<br>Perfect match = Bonus</p>
+            <button onclick="startGame()">PLAY</button>
+        </div>
+    </div>
+
+    <div id="pause-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1>PAUSED</h1>
+            <button onclick="togglePause()">RESUME</button>
+            <button onclick="location.href='index.html'" style="background: #333; box-shadow: none; border: 1px solid #555;">EXIT</button>
+        </div>
+    </div>
+
+    <div id="fail-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1 style="color:red; text-shadow:0 0 20px red;">GAME OVER</h1>
+            <p id="final-score">Score: 0</p>
+            <button onclick="startGame()">RETRY</button>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- 게임 변수 ---
+        let boxes = [];
+        let currentBox = null;
+        let mode = 'start'; // start, game, pause, over
+        let animationId;
+        
+        let stage = 1;
+        let stackCount = 0; 
+        let requiredStack = 3;
+        let totalScore = 0;
+        
+        let speed = 3;
+        let direction = 1; 
+        let baseSize = 50; 
+        
+        // [중요] 카메라 변수
+        let cameraY = 0;
+        let targetCameraY = 0;
+        
+        let hue = 0;
+        let combo = 0;
+
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 박스 클래스
+        class Box {
+            constructor(x, y, w, color) {
+                this.x = x; this.y = y; this.w = w; this.h = baseSize; this.color = color;
+            }
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 20; ctx.shadowColor = this.color;
+                // [수정됨] 카메라 좌표를 더해서 아래로 내림
+                ctx.fillRect(this.x, this.y + cameraY, this.w, this.h);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function startGame() {
+            document.querySelectorAll('.ui-screen').forEach(el => el.classList.add('hidden'));
+            
+            // 초기화
+            boxes = [];
+            stage = 1;
+            stackCount = 0;
+            requiredStack = 3;
+            totalScore = 0;
+            speed = 3;
+            cameraY = 0;
+            targetCameraY = 0;
+            hue = 0;
+            combo = 0;
+            
+            updateHUD();
+
+            // 바닥 생성 (화면 하단)
+            boxes.push(new Box(canvas.width/2 - 100, canvas.height - 100, 200, 'cyan'));
+            spawnBox();
+            
+            mode = 'game';
+            animate();
+        }
+
+        function spawnBox() {
+            const prevBox = boxes[boxes.length - 1];
+            hue = (hue + 20) % 360;
+            const color = `hsl(${hue}, 100%, 50%)`;
+            
+            // 새 블록은 이전 블록 바로 위에 생성 (Y 좌표는 계속 작아짐/위로감)
+            currentBox = new Box(0, prevBox.y - baseSize, prevBox.w, color);
+            currentBox.x = (direction === 1) ? -currentBox.w : canvas.width;
+        }
+
+        function placeBox() {
+            if (mode !== 'game') return;
+
+            const prevBox = boxes[boxes.length - 1];
+            let diff = currentBox.x - prevBox.x;
+            
+            // 실패
+            if (Math.abs(diff) >= currentBox.w) {
+                gameOver();
+                return;
+            }
+
+            // 퍼펙트 판정 (오차 5px 이내)
+            if (Math.abs(diff) < 5) {
+                currentBox.x = prevBox.x; // 위치 보정
+                combo++;
+                showMsg(combo >= 3 ? "FEVER!" : "PERFECT!");
+                if(combo >= 3) {
+                    document.body.classList.add('fever-bg');
+                    if(currentBox.w < 300) currentBox.w += 20; // 보너스 크기
+                }
+                totalScore += 2;
+            } else {
+                // 블록 깎기
+                combo = 0;
+                document.body.classList.remove('fever-bg');
+                if (diff > 0) currentBox.w -= diff;
+                else { currentBox.w += diff; currentBox.x = prevBox.x; }
+                totalScore += 1;
+            }
+
+            boxes.push(currentBox);
+            stackCount++;
+            
+            // [카메라 로직 수정]
+            // 현재 쌓인 높이가 화면 중간보다 높아지면(Y값이 작아지면) 카메라 목표값을 올림
+            const topBlockY = currentBox.y + cameraY; // 화면상 실제 Y 위치
+            const targetScreenY = canvas.height * 0.6; // 화면의 60% 지점을 유지 목표로 설정
+            
+            if (topBlockY < targetScreenY) {
+                // 차이만큼 카메라를 더 아래로 내림 (값 증가)
+                targetCameraY += (targetScreenY - topBlockY);
+            }
+
+            if (stackCount >= requiredStack) levelUp();
+            
+            updateHUD();
+            spawnBox();
+        }
+
+        function levelUp() {
+            stage++;
+            requiredStack++; 
+            stackCount = 0;
+            speed += 0.5;
+            showMsg("STAGE CLEAR!");
+        }
+
+        function updateHUD() {
+            document.getElementById('stage-val').innerText = stage;
+            document.getElementById('goal-val').innerText = `${stackCount} / ${requiredStack}`;
+            document.getElementById('score-val').innerText = totalScore;
+        }
+
+        function showMsg(text) {
+            const msg = document.getElementById('msg');
+            msg.innerText = text;
+            msg.style.textShadow = text.includes('FEVER') ? '0 0 30px gold' : '0 0 20px cyan';
+            msg.classList.remove('pop-anim');
+            void msg.offsetWidth;
+            msg.classList.add('pop-anim');
+        }
+
+        function gameOver() {
+            mode = 'over';
+            document.getElementById('fail-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = `Total Score: ${totalScore}`;
+        }
+
+        function togglePause() {
+            if (mode === 'over' || mode === 'start') return;
+            if (mode === 'game') {
+                mode = 'pause';
+                cancelAnimationFrame(animationId);
+                document.getElementById('pause-screen').classList.remove('hidden');
+            } else if (mode === 'pause') {
+                mode = 'game';
+                document.getElementById('pause-screen').classList.add('hidden');
+                animate();
+            }
+        }
+
+        window.addEventListener('mousedown', (e) => { if(e.target.tagName !== 'BUTTON') placeBox(); });
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') placeBox();
+            if (e.code === 'Escape') togglePause();
+        });
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.tagName !== 'BUTTON') { e.preventDefault(); placeBox(); }
+        }, {passive: false});
+
+        function animate() {
+            if (mode !== 'game') return;
+            animationId = requestAnimationFrame(animate);
+
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // [부드러운 카메라 이동]
+            // 현재 cameraY를 목표값(targetCameraY)으로 부드럽게 이동 (Lerp)
+            cameraY += (targetCameraY - cameraY) * 0.1;
+
+            boxes.forEach(box => box.draw());
+
+            if (currentBox) {
+                currentBox.x += speed * direction;
+                if (currentBox.x > canvas.width) { direction = -1; currentBox.x = canvas.width; }
+                if (currentBox.x + currentBox.w < 0) { direction = 1; currentBox.x = -currentBox.w; }
+                
+                // 현재 움직이는 블록 그리기 (카메라 적용)
+                ctx.fillStyle = currentBox.color;
+                ctx.shadowBlur = 20; ctx.shadowColor = currentBox.color;
+                ctx.fillRect(currentBox.x, currentBox.y + cameraY, currentBox.w, currentBox.h);
+                ctx.shadowBlur = 0;
+            }
+        }
+    </script>
+</body>
+</html>
