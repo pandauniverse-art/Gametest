@@ -5,35 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Game 2: Neon Stack</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Pretendard', sans-serif; user-select: none; touch-action: none; }
+        body { 
+            margin: 0; overflow: hidden; background-color: #050505; 
+            font-family: 'Pretendard', sans-serif; user-select: none; touch-action: none; 
+        }
         canvas { display: block; }
         
         /* 공통 UI 스타일 */
-        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.8); z-index: 10; transition: opacity 0.3s; }
+        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; transition: opacity 0.3s; }
         .hidden { opacity: 0; pointer-events: none; }
+        .glass-panel { background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; }
         
         h1 { font-size: 50px; color: #ff00ff; text-shadow: 0 0 20px #ff00ff; margin-bottom: 20px; font-style: italic; }
-        p { color: white; font-size: 20px; margin-bottom: 40px; }
-        button { padding: 15px 50px; font-size: 24px; border: none; border-radius: 10px; background: #ff00ff; color: white; cursor: pointer; box-shadow: 0 0 15px #ff00ff; font-weight: bold; }
+        p { color: white; font-size: 18px; margin-bottom: 30px; line-height: 1.5; }
+        button { padding: 15px 50px; font-size: 24px; border: none; border-radius: 10px; background: #ff00ff; color: white; cursor: pointer; box-shadow: 0 0 15px #ff00ff; font-weight: bold; margin-top: 10px; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
         
-        #score-display { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: 60px; color: rgba(255,255,255,0.2); font-weight: bold; pointer-events: none; }
-        #back-btn { position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: #333; color: white; border: 1px solid #555; text-decoration: none; border-radius: 10px; z-index: 20; }
+        /* 뒤로가기 버튼 */
+        #back-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; backdrop-filter: blur(5px); }
+        
+        /* HUD (점수판) */
+        #hud { position: absolute; top: 20px; left: 20px; color: white; z-index: 10; font-family: monospace; text-align: left; }
+        .hud-item { font-size: 20px; margin-bottom: 5px; font-weight: bold; }
+        #stage-val { color: #00e5ff; }
+        #goal-val { color: #ff00ff; }
+
+        /* 스테이지 클리어 메시지 */
+        #stage-clear-msg {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 60px; font-weight: 900; color: #fff; text-shadow: 0 0 20px #00e5ff;
+            pointer-events: none; opacity: 0; z-index: 50; white-space: nowrap;
+        }
+        .pop-anim { animation: popUp 1s ease-out forwards; }
+        @keyframes popUp { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
     </style>
 </head>
 <body>
     <a href="index.html" id="back-btn">⬅ HOME</a>
-    <div id="score-display">0</div>
+    
+    <div id="hud">
+        <div class="hud-item">STAGE: <span id="stage-val">1</span></div>
+        <div class="hud-item">GOAL: <span id="goal-val">0 / 3</span></div>
+    </div>
+
+    <div id="stage-clear-msg">STAGE CLEAR!</div>
 
     <div id="start-screen" class="ui-screen">
-        <h1>NEON STACK</h1>
-        <p>Click or Space to Stack</p>
-        <button onclick="startGame()">PLAY</button>
+        <div class="glass-panel">
+            <h1>NEON STACK</h1>
+            <p>Click or Space to Stack<br>Clear Stages to Speed Up</p>
+            <button onclick="startGame()">PLAY</button>
+        </div>
+    </div>
+
+    <div id="pause-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1>PAUSED</h1>
+            <p>Game Paused</p>
+            <button onclick="togglePause()">RESUME</button>
+            <button onclick="location.href='index.html'" style="background: #333; box-shadow: none; border: 1px solid #555;">EXIT</button>
+        </div>
     </div>
 
     <div id="fail-screen" class="ui-screen hidden">
-        <h1 style="color:red; text-shadow:0 0 20px red;">GAME OVER</h1>
-        <p id="final-score">Score: 0</p>
-        <button onclick="startGame()">RETRY</button>
+        <div class="glass-panel">
+            <h1 style="color:red; text-shadow:0 0 20px red;">GAME OVER</h1>
+            <p id="final-score">Stage: 1</p>
+            <button onclick="startGame()">RETRY</button>
+        </div>
     </div>
 
     <canvas id="canvas"></canvas>
@@ -42,15 +81,22 @@
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         
-        // 게임 변수
+        // --- 게임 변수 ---
         let boxes = [];
         let currentBox = null;
-        let mode = 'start'; // start, game, over
+        let mode = 'start'; // start, game, pause, over
+        let animationId;
+        
+        // 스테이지 시스템 변수
+        let stage = 1;
+        let stackCount = 0; // 현재 스테이지에서 쌓은 개수
+        let requiredStack = 3; // 목표 개수 (3부터 시작해서 1씩 증가)
+        
         let speed = 2;
-        let score = 0;
-        let direction = 1; // 1: right, -1: left
-        let baseSize = 50; // 박스 높이
+        let direction = 1; 
+        let baseSize = 50; 
         let cameraY = 0;
+        let hue = 0;
 
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize);
@@ -63,21 +109,27 @@
             }
             draw() {
                 ctx.fillStyle = this.color;
-                ctx.shadowBlur = 20; ctx.shadowColor = this.color;
+                ctx.shadowBlur = 15; ctx.shadowColor = this.color;
                 ctx.fillRect(this.x, this.y - cameraY, this.w, this.h);
                 ctx.shadowBlur = 0;
             }
         }
 
+        // 게임 시작
         function startGame() {
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('fail-screen').classList.add('hidden');
             
+            // 초기화
             boxes = [];
-            score = 0;
-            speed = 5;
+            stage = 1;
+            stackCount = 0;
+            requiredStack = 3;
+            speed = 3; // 초기 속도
             cameraY = 0;
-            document.getElementById('score-display').innerText = score;
+            hue = 0;
+            
+            updateHUD();
 
             // 바닥 생성
             boxes.push(new Box(canvas.width/2 - 100, canvas.height - 100, 200, 'cyan'));
@@ -87,29 +139,31 @@
             animate();
         }
 
+        // 새로운 박스 생성
         function spawnBox() {
             const prevBox = boxes[boxes.length - 1];
-            // 색상 변화 (Hue Rotation)
-            const hue = (score * 10) % 360;
+            hue = (hue + 20) % 360;
             const color = `hsl(${hue}, 100%, 50%)`;
             
             currentBox = new Box(0, prevBox.y - baseSize, prevBox.w, color);
-            currentBox.x = -currentBox.w; // 왼쪽 밖에서 시작
-            direction = 1;
+            // 화면 양 끝 중 랜덤 시작
+            currentBox.x = (direction === 1) ? -currentBox.w : canvas.width;
         }
 
+        // 박스 놓기 (핵심 로직)
         function placeBox() {
+            if (mode !== 'game') return;
+
             const prevBox = boxes[boxes.length - 1];
-            
-            // 차이 계산
             const diff = currentBox.x - prevBox.x;
             
+            // 실패 조건 (범위 벗어남)
             if (Math.abs(diff) >= currentBox.w) {
                 gameOver();
                 return;
             }
 
-            // 박스 깎기
+            // 박스 자르기
             if (diff > 0) {
                 currentBox.w -= diff;
             } else {
@@ -118,48 +172,107 @@
             }
 
             boxes.push(currentBox);
-            score++;
-            speed += 0.2; // 속도 증가
-            document.getElementById('score-display').innerText = score;
-
+            stackCount++;
+            
             // 카메라 이동
-            if (score > 5) cameraY += baseSize;
+            if (boxes.length > 5) cameraY += baseSize;
+
+            // [스테이지 클리어 체크]
+            if (stackCount >= requiredStack) {
+                levelUp();
+            } else {
+                updateHUD();
+                spawnBox(); // 계속 진행
+            }
+        }
+
+        // 레벨업 (스테이지 클리어)
+        function levelUp() {
+            stage++;
+            requiredStack++; // 목표 1개 증가
+            stackCount = 0;  // 현재 쌓은 개수 초기화
+            speed += 1;      // 속도 빨라짐 (난이도 상승)
+            
+            updateHUD();
+            
+            // 시각 효과
+            const msg = document.getElementById('stage-clear-msg');
+            msg.innerText = `STAGE ${stage-1} CLEAR!`;
+            msg.classList.remove('pop-anim');
+            void msg.offsetWidth;
+            msg.classList.add('pop-anim');
 
             spawnBox();
+        }
+
+        function updateHUD() {
+            document.getElementById('stage-val').innerText = stage;
+            document.getElementById('goal-val').innerText = `${stackCount} / ${requiredStack}`;
         }
 
         function gameOver() {
             mode = 'over';
             document.getElementById('fail-screen').classList.remove('hidden');
-            document.getElementById('final-score').innerText = `Height: ${score}`;
+            document.getElementById('final-score').innerText = `Failed at Stage ${stage}`;
+        }
+
+        // --- 일시정지 시스템 ---
+        function togglePause() {
+            if (mode === 'over' || mode === 'start') return;
+
+            if (mode === 'game') {
+                mode = 'pause';
+                cancelAnimationFrame(animationId);
+                document.getElementById('pause-screen').classList.remove('hidden');
+            } else if (mode === 'pause') {
+                mode = 'game';
+                document.getElementById('pause-screen').classList.add('hidden');
+                animate();
+            }
         }
 
         // 입력 처리
-        function handleInput() {
-            if (mode === 'game') placeBox();
-        }
-        window.addEventListener('mousedown', handleInput);
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') handleInput();
-            if (e.code === 'Escape') { /* 일시정지 로직 추가 가능 */ }
+        window.addEventListener('mousedown', (e) => {
+            if (e.target.tagName !== 'BUTTON') placeBox();
         });
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') placeBox();
+            if (e.code === 'Escape') togglePause();
+        });
+        // 모바일 터치
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.tagName !== 'BUTTON') {
+                e.preventDefault(); // 스크롤 방지
+                placeBox();
+            }
+        }, {passive: false});
 
+
+        // 게임 루프
         function animate() {
             if (mode !== 'game') return;
-            requestAnimationFrame(animate);
+            animationId = requestAnimationFrame(animate);
 
-            ctx.fillStyle = '#111';
+            ctx.fillStyle = '#050505';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 기존 박스들 그리기
+            // 쌓인 박스 그리기
             boxes.forEach(box => box.draw());
 
             // 현재 움직이는 박스
             if (currentBox) {
                 currentBox.x += speed * direction;
+                
                 // 벽 튕기기
-                if (currentBox.x > canvas.width) direction = -1;
-                if (currentBox.x + currentBox.w < 0) direction = 1;
+                if (currentBox.x > canvas.width) {
+                    direction = -1;
+                    currentBox.x = canvas.width;
+                }
+                if (currentBox.x + currentBox.w < 0) {
+                    direction = 1;
+                    currentBox.x = -currentBox.w;
+                }
+                
                 currentBox.draw();
             }
         }
