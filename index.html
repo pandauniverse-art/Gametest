@@ -14,36 +14,44 @@
         
         /* 언어 전환 버튼 */
         .lang-switch {
-            position: absolute; top: 20px; right: 30px;
+            position: absolute; top: 20px; right: 20px;
             display: flex; gap: 10px; z-index: 100;
         }
         .lang-btn {
             background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-            color: #aaa; padding: 5px 15px; border-radius: 20px; cursor: pointer;
-            font-weight: bold; transition: 0.3s;
+            color: #aaa; padding: 5px 12px; border-radius: 20px; cursor: pointer;
+            font-weight: bold; font-size: 12px; transition: 0.3s;
         }
-        .lang-btn:hover { background: rgba(255,255,255,0.2); color: white; }
         .lang-btn.active {
             background: #00e5ff; color: #000; border-color: #00e5ff; box-shadow: 0 0 10px #00e5ff;
         }
         
         /* 메인 타이틀 */
         h1 { 
-            font-size: 3rem; margin-bottom: 50px; text-align: center;
+            font-size: clamp(2rem, 5vw, 3.5rem); /* 화면 크기에 따라 폰트 조절 */
+            margin-bottom: 40px; text-align: center;
             background: linear-gradient(to right, #00e5ff, #ff00ff); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
             text-transform: uppercase; letter-spacing: 2px;
+            line-height: 1.2;
         }
         
-        /* 게임 목록 그리드 */
+        /* [핵심] 2x2 그리드 레이아웃 */
         .game-grid { 
-            display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; 
-            padding: 20px; max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 가로 2칸 고정 */
+            /* 간격: 최소 15px ~ 최대 30px 사이로 자동 조절 */
+            gap: clamp(15px, 3vw, 30px); 
+            
+            width: 90%;
+            max-width: 800px; /* 너무 커지지 않게 제한 */
+            padding-bottom: 40px;
         }
         
         /* 게임 카드 디자인 */
         .game-card {
-            width: 250px; height: 350px;
+            width: 100%; /* 그리드 칸을 꽉 채움 */
+            aspect-ratio: 3 / 4; /* 가로세로 비율 유지 (3:4) */
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 20px;
@@ -53,39 +61,44 @@
         }
         
         .game-card:hover { 
-            transform: translateY(-10px); 
+            transform: translateY(-5px); 
             background: rgba(255,255,255,0.1); 
-            box-shadow: 0 0 30px rgba(0,229,255,0.3); 
+            box-shadow: 0 0 20px rgba(0,229,255,0.3); 
             border-color: rgba(0,229,255,0.5);
         }
         
-        .game-icon { font-size: 80px; margin-bottom: 20px; transition: 0.3s; }
+        /* 반응형 아이콘 & 텍스트 */
+        .game-icon { 
+            font-size: clamp(40px, 8vw, 80px); /* 아이콘 크기 자동 조절 */
+            margin-bottom: 15px; transition: 0.3s; 
+        }
         .game-card:hover .game-icon { transform: scale(1.1); }
         
-        .game-info { text-align: center; z-index: 2; }
-        .game-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .game-desc { font-size: 14px; color: #aaa; padding: 0 20px; line-height: 1.5; }
+        .game-info { text-align: center; z-index: 2; width: 90%; }
         
-        /* 뱃지 (HOT, NEW) */
-        .badge { 
-            position: absolute; top: 15px; right: 15px; 
-            background: #ff00ff; padding: 5px 10px; border-radius: 10px; 
-            font-size: 12px; font-weight: bold; box-shadow: 0 0 10px #ff00ff;
+        .game-title { 
+            font-size: clamp(14px, 2.5vw, 24px); /* 제목 크기 자동 조절 */
+            font-weight: bold; margin-bottom: 5px; 
+            white-space: nowrap; /* 줄바꿈 방지 */
         }
         
-        /* 모바일 반응형 */
-        @media (max-width: 600px) {
-            h1 { font-size: 2rem; margin-top: 50px; margin-bottom: 30px; }
-            .game-grid { gap: 15px; }
-            .game-card { 
-                width: 100%; max-width: 320px; height: 100px; 
-                flex-direction: row; justify-content: flex-start; padding-left: 20px; 
-            }
-            .game-icon { font-size: 40px; margin-bottom: 0; margin-right: 20px; }
-            .game-info { text-align: left; }
-            .game-title { font-size: 18px; margin-bottom: 2px; }
-            .game-desc { padding: 0; font-size: 12px; }
-            .badge { top: 10px; right: 10px; padding: 3px 8px; font-size: 10px; }
+        .game-desc { 
+            font-size: clamp(10px, 1.5vw, 14px); /* 설명 크기 자동 조절 */
+            color: #aaa; line-height: 1.4; 
+        }
+        
+        /* 뱃지 */
+        .badge { 
+            position: absolute; top: 10px; right: 10px; 
+            background: #ff00ff; padding: 4px 8px; border-radius: 8px; 
+            font-size: 10px; font-weight: bold; box-shadow: 0 0 10px #ff00ff;
+        }
+        
+        /* 모바일 최적화 (화면이 아주 좁을 때) */
+        @media (max-width: 400px) {
+            .game-grid { gap: 10px; }
+            .game-card { border-radius: 15px; }
+            .game-desc { display: none; } /* 화면 너무 작으면 설명 숨김 */
         }
     </style>
 </head>
@@ -137,7 +150,6 @@
     </div>
 
     <script>
-        // [다국어 번역 데이터]
         const translations = {
             kr: {
                 mainTitle: "판다 유니버스 아케이드",
@@ -159,28 +171,25 @@
             }
         };
 
-        // 초기화: 저장된 언어가 있으면 불러오고, 없으면 한국어(kr) 기본
         let currentLang = localStorage.getItem('siteLang') || 'kr';
         applyLanguage(currentLang);
 
         function setLanguage(lang) {
             currentLang = lang;
-            localStorage.setItem('siteLang', lang); // 설정 저장
+            localStorage.setItem('siteLang', lang);
             applyLanguage(lang);
         }
 
         function applyLanguage(lang) {
-            // 1. 버튼 스타일 업데이트
             document.getElementById('btn-kr').classList.remove('active');
             document.getElementById('btn-en').classList.remove('active');
             document.getElementById(`btn-${lang}`).classList.add('active');
 
-            // 2. 텍스트 교체 (data-lang 속성이 있는 모든 요소 찾기)
             const elements = document.querySelectorAll('[data-lang]');
             elements.forEach(el => {
                 const key = el.getAttribute('data-lang');
                 if (translations[lang][key]) {
-                    el.innerHTML = translations[lang][key]; // HTML 태그 포함 적용
+                    el.innerHTML = translations[lang][key];
                 }
             });
         }
