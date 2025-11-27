@@ -1,252 +1,65 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Game 4: Deadline Run</title>
-    <style>
-        body { 
-            margin: 0; overflow: hidden; background-color: #050505; 
-            font-family: 'Pretendard', sans-serif; user-select: none; touch-action: none; 
-        }
-        canvas { display: block; }
-        
-        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; }
-        .hidden { display: none !important; }
-        .glass-panel { background: rgba(20, 20, 30, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; }
-        h1 { font-size: 8vmin; margin: 0 0 20px 0; font-style: italic; background: linear-gradient(to right, #ff00ff, #00e5ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p { color: #ccc; font-size: 4vmin; margin-bottom: 30px; }
-        button { padding: 15px 50px; font-size: 5vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; background: linear-gradient(135deg, #ff00ff, #bc13fe); color: white; }
-        
-        #hud { position: absolute; top: 20px; right: 20px; text-align: right; color: white; z-index: 10; font-family: monospace; }
-        .score { font-size: 30px; font-weight: bold; color: #00e5ff; }
-        .speed { font-size: 16px; color: #ff00ff; }
-        #back-btn { position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; }
-        
-        /* 모바일용 큰 버튼 */
-        #mobile-controls { position: absolute; bottom: 0; width: 100%; height: 50%; display: flex; z-index: 50; }
-        .touch-zone { flex: 1; /* 왼쪽: 숙이기, 오른쪽: 점프 */ }
-    </style>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Deadline Run: Pro</title>
+<style>
+body{margin:0;overflow:hidden;background:#050505;font-family:sans-serif;touch-action:none}canvas{display:block}
+.ui{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff;z-index:10}
+.hidden{display:none}button{padding:15px 40px;font-size:24px;background:#f0f;border:none;border-radius:30px;color:#fff;font-weight:bold;margin-top:20px;cursor:pointer}
+#hud{position:absolute;top:20px;right:20px;color:#fff;font-size:24px;font-family:monospace;z-index:5}
+#back{position:absolute;top:20px;left:20px;color:#fff;border:1px solid #fff;padding:5px 10px;text-decoration:none;border-radius:5px;z-index:20}
+</style>
 </head>
 <body>
-    <a href="index.html" id="back-btn">⬅ HOME</a>
-    <div id="hud"><div class="score">00000</div><div class="speed">SPEED: 100%</div></div>
+<a href="index.html" id="back">🏠 HOME</a>
+<div id="hud">00000</div>
+<div id="start" class="ui"><h1>DEADLINE RUN</h1><p>Double Jump Available!</p><button onclick="init()">RUN</button></div>
+<div id="fail" class="ui hidden"><h1 style="color:red">CRASHED</h1><button onclick="init()">RETRY</button></div>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+let w,h,run,score,speed,player,obs=[],bgOff=0,frame=0;
+const reset=()=>{w=c.width=window.innerWidth;h=c.height=window.innerHeight};window.onresize=reset;reset();
+function init(){
+ document.querySelectorAll('.ui').forEach(e=>e.classList.add('hidden'));
+ player={x:50,y:0,w:50,h:50,dy:0,jump:2,ground:false,emoji:'🏃'}; // jump: 2 (2단 점프)
+ obs=[];score=0;speed=6;run=true;player.y=h-150;frame=0;loop();
+}
+function loop(){
+ if(!run)return;requestAnimationFrame(loop);frame++;score++;speed+=0.002;
+ document.getElementById('hud').innerText=Math.floor(score/10);
+ // 물리학
+ player.dy+=0.8; player.y+=player.dy;
+ if(player.y>h-150){player.y=h-150;player.dy=0;player.ground=true;player.jump=2;}
+ 
+ // 장애물
+ if(frame%Math.floor(1000/speed)==0){
+  let type=Math.random()<0.5;
+  obs.push({x:w,y:type?h-150:h-220,w:50,h:50,emoji:type?'📨':'⚠️'});
+ }
+ // 배경 패럴랙스 (별)
+ x.fillStyle='#050505';x.fillRect(0,0,w,h);
+ x.fillStyle='#fff';
+ for(let i=0;i<50;i++)x.fillRect((i*100-score*0.2)%w, h/2+Math.sin(i)*100, 2,2); // 먼 배경
+ // 바닥 그리드
+ x.beginPath();
+ for(let i=0;i<20;i++){x.moveTo(0,h-100+i*10);x.lineTo(w,h-100+i*10);} // 가로선
+ for(let i=0;i<20;i++){x.moveTo((i*100-score*speed)%w,h-100);x.lineTo((i*100-score*speed)%w-200,h);} // 세로선(기울기)
+ x.strokeStyle='#f0f';x.stroke();
 
-    <div id="start-screen" class="ui-screen">
-        <div class="glass-panel">
-            <h1>DEADLINE RUN</h1>
-            <p>Click / Space: JUMP<br>Down Arrow: DUCK</p>
-            <button onclick="startGame()">RUN!</button>
-        </div>
-    </div>
-
-    <div id="fail-screen" class="ui-screen hidden">
-        <div class="glass-panel">
-            <h1 style="color:#ff2a6d">CRASHED!</h1>
-            <p>Final Score: <span id="final-score">0</span></p>
-            <button onclick="startGame()">TRY AGAIN</button>
-        </div>
-    </div>
-
-    <div id="mobile-controls">
-        <div class="touch-zone" id="zone-duck"></div>
-        <div class="touch-zone" id="zone-jump"></div>
-    </div>
-
-    <canvas id="canvas"></canvas>
-
-    <script>
-        // 오디오
-        let audioCtx = null;
-        function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }
-        function playTone(freq, type, dur) {
-            if(!audioCtx) return;
-            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-            o.connect(g); g.connect(audioCtx.destination);
-            o.type=type; o.frequency.value=freq;
-            g.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            o.start(); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime+dur);
-            o.stop(audioCtx.currentTime+dur);
-        }
-        const SFX = {
-            jump: () => playTone(300, 'square', 0.1),
-            score: () => playTone(800, 'sine', 0.1),
-            crash: () => { playTone(100, 'sawtooth', 0.3); setTimeout(()=>playTone(50, 'sawtooth', 0.3), 100); }
-        };
-
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-
-        // 게임 변수
-        let gameSpeed = 5;
-        let score = 0;
-        let isRunning = false;
-        let obstacles = [];
-        let frame = 0;
-        let groundHeight = 100;
-
-        // [업데이트] 플레이어 크기 2배 (40 -> 80)
-        // 점프력도 덩치에 맞게 상향 (18 -> 22)
-        const player = {
-            x: 50, y: 0, w: 80, h: 80, // 크기 2배
-            dy: 0, jumpForce: 22, gravity: 1.2, 
-            grounded: false, ducking: false,
-            originalH: 80, duckH: 40, // 숙였을 때 높이도 2배
-            emoji: '🏃'
-        };
-
-        function resize() { 
-            canvas.width = window.innerWidth; 
-            canvas.height = window.innerHeight; 
-            groundHeight = canvas.height * 0.25; 
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        function startGame() {
-            initAudio();
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('fail-screen').classList.add('hidden');
-            obstacles = [];
-            score = 0;
-            gameSpeed = 8;
-            player.y = canvas.height - groundHeight - player.h;
-            player.dy = 0;
-            isRunning = true;
-            animate();
-        }
-
-        // [업데이트] 장애물 크기 2배 (40 -> 80)
-        function spawnObstacle() {
-            const type = Math.random() < 0.6 ? 'ground' : 'air';
-            let obs = { x: canvas.width, w: 80, h: 80, type: type, passed: false }; // 크기 2배
-
-            if (type === 'ground') {
-                obs.y = canvas.height - groundHeight - 80; // 높이 보정
-                obs.emoji = '📨'; 
-            } else {
-                obs.y = canvas.height - groundHeight - 160; // 공중 높이 보정
-                obs.emoji = '⚠️'; 
-            }
-            obstacles.push(obs);
-        }
-
-        function update() {
-            frame++; score++; gameSpeed += 0.002;
-            document.querySelector('.score').innerText = Math.floor(score/10).toString().padStart(5,'0');
-            document.querySelector('.speed').innerText = `SPEED: ${Math.floor(gameSpeed*10)}%`;
-
-            player.h = player.ducking ? player.duckH : player.originalH;
-            player.emoji = player.ducking ? '🙇' : '🏃';
-
-            if (!player.grounded) {
-                player.dy += player.gravity;
-                player.y += player.dy;
-                if (player.y + player.h > canvas.height - groundHeight) {
-                    player.y = canvas.height - groundHeight - player.h;
-                    player.dy = 0; player.grounded = true;
-                }
-            } else if (player.y + player.h < canvas.height - groundHeight) {
-                player.grounded = false; 
-            }
-
-            if (frame % Math.floor(1200 / gameSpeed) === 0) spawnObstacle();
-
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                let obs = obstacles[i];
-                obs.x -= gameSpeed;
-
-                // 충돌 처리 (여유 15px)
-                const hitMargin = 15;
-                if (
-                    player.x + hitMargin < obs.x + obs.w - hitMargin &&
-                    player.x + player.w - hitMargin > obs.x + hitMargin &&
-                    player.y + hitMargin < obs.y + obs.h - hitMargin &&
-                    player.y + player.h - hitMargin > obs.y + hitMargin
-                ) {
-                    gameOver();
-                }
-
-                if (!obs.passed && obs.x + obs.w < player.x) {
-                    obs.passed = true;
-                    SFX.score();
-                }
-                if (obs.x + obs.w < 0) obstacles.splice(i, 1);
-            }
-        }
-
-        function draw() {
-            ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // 바닥 (신스웨이브)
-            ctx.save();
-            ctx.beginPath();
-            let horizon = canvas.height - groundHeight;
-            let grad = ctx.createLinearGradient(0, horizon, 0, canvas.height);
-            grad.addColorStop(0, '#ff00ff22'); grad.addColorStop(1, '#000000');
-            ctx.fillStyle = grad; ctx.fillRect(0, horizon, canvas.width, groundHeight);
-
-            ctx.strokeStyle = '#ff00ff44'; ctx.lineWidth = 2;
-            let centerX = canvas.width / 2;
-            for (let i = -10; i <= 10; i++) {
-                let x = centerX + (i * 100); 
-                ctx.moveTo(centerX + (i * 20), horizon); ctx.lineTo(x * 4, canvas.height);
-            }
-            ctx.stroke();
-            ctx.restore();
-
-            // 장애물 (폰트 70px)
-            ctx.font = '70px serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            obstacles.forEach(obs => ctx.fillText(obs.emoji, obs.x + obs.w/2, obs.y + obs.h/2));
-
-            // [업데이트] 플레이어 그리기 (방향 반전 + 크기 2배)
-            ctx.save();
-            ctx.font = '80px serif'; // 폰트 80px
-            // 중심축 이동 후 스케일 반전 (우측 보기)
-            ctx.translate(player.x + player.w/2, player.y + player.h/2 + 5);
-            ctx.scale(-1, 1); // 좌우 반전
-            ctx.fillText(player.emoji, 0, 0);
-            ctx.restore();
-        }
-
-        function animate() {
-            if (!isRunning) return;
-            requestAnimationFrame(animate); update(); draw();
-        }
-
-        function gameOver() {
-            isRunning = false; SFX.crash();
-            document.getElementById('fail-screen').classList.remove('hidden');
-            document.getElementById('final-score').innerText = Math.floor(score);
-        }
-
-        // 컨트롤
-        function jump() { 
-            if(player.grounded && !player.ducking) { 
-                player.dy = -player.jumpForce; 
-                player.grounded = false; 
-                SFX.jump(); 
-            } 
-        }
-        function duck(active) { if(player.grounded) player.ducking = active; }
-
-        window.addEventListener('keydown', e => {
-            if (e.code === 'Space' || e.code === 'ArrowUp') jump();
-            if (e.code === 'ArrowDown') duck(true);
-        });
-        window.addEventListener('keyup', e => { if (e.code === 'ArrowDown') duck(false); });
-
-        // [추가] 마우스 클릭 점프
-        window.addEventListener('mousedown', (e) => {
-            // 버튼 클릭이 아닐 때만 점프
-            if(e.target.tagName !== 'BUTTON') jump();
-        });
-
-        // 모바일 터치
-        document.getElementById('zone-jump').addEventListener('touchstart', (e)=>{e.preventDefault(); jump();});
-        document.getElementById('zone-duck').addEventListener('touchstart', (e)=>{e.preventDefault(); duck(true);});
-        document.getElementById('zone-duck').addEventListener('touchend', (e)=>{e.preventDefault(); duck(false);});
-    </script>
-</body>
-</html>
+ // 그리기 & 충돌
+ x.font='50px serif';x.textAlign='center';
+ obs.forEach((o,i)=>{
+  o.x-=speed; x.fillText(o.emoji,o.x+25,o.y+40);
+  if(player.x<o.x+40&&player.x+40>o.x&&player.y<o.y+40&&player.y+40>o.y)fail();
+  if(o.x<-50)obs.splice(i,1);
+ });
+ x.fillText(player.emoji,player.x+25,player.y+45);
+}
+function jump(){if(player.jump>0){player.dy=-15;player.jump--;player.ground=false;}}
+function fail(){run=false;document.getElementById('fail').classList.remove('hidden');}
+window.onkeydown=e=>{if(e.code=='Space'||e.code=='ArrowUp')jump();if(e.code=='Escape')location.href='index.html'};
+window.onmousedown=e=>{if(e.target.tagName!='BUTTON')jump()};
+document.addEventListener('touchstart',e=>{if(e.target.tagName!='BUTTON'){e.preventDefault();jump()}},{passive:false});
+</script></body></html>
