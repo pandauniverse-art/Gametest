@@ -3,29 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Render Rush: Mobile Ready</title>
+    <title>Render Rush: Fixed</title>
     <style>
         body { 
-            margin: 0; 
-            overflow: hidden; 
-            background-color: #121212; 
-            font-family: 'Pretendard', sans-serif; 
-            color: white; 
-            user-select: none; /* 텍스트 선택 방지 */
-            -webkit-user-select: none;
-            touch-action: none; /* [중요] 모바일 스크롤/줌 완전 차단 */
+            margin: 0; overflow: hidden; background-color: #121212; 
+            font-family: 'Pretendard', sans-serif; color: white; 
+            user-select: none; -webkit-user-select: none; touch-action: none; 
         }
         canvas { display: block; }
         
         .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.9); z-index: 100; transition: opacity 0.5s; }
         .hidden { opacity: 0; pointer-events: none; }
         
-        /* 모바일 폰트 크기 대응 (vmin 단위 사용) */
+        /* 폰트 크기 반응형 (vmin) */
         h1 { font-size: 10vmin; margin-bottom: 20px; text-align: center; text-transform: uppercase; }
         p.desc { font-size: 4vmin; color: #ccc; margin-bottom: 40px; text-align: center; line-height: 1.6; }
         
         button { padding: 15px 50px; font-size: 5vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.2s; background: white; color: black; }
-        button:active { transform: scale(0.95); background: #00e5ff; } /* 모바일은 hover 대신 active */
+        button:active { transform: scale(0.95); background: #00e5ff; }
         
         #hud-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; display: none; }
         .hud-text { font-size: 5vmin; font-weight: bold; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
@@ -64,8 +59,11 @@
         }
 
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 90; transition: opacity 0.1s; }
+        
+        /* [중요] 문제의 진행도 바 스타일 */
         #progress-container { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; display: none; }
         #progress-bar { width: 0%; height: 100%; background: #00e5ff; transition: width 0.1s linear; }
+        
         #error-log { display: none; position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 20px; z-index: 999; font-size: 12px; max-width: 200px; word-break: break-all; }
     </style>
 </head>
@@ -83,8 +81,8 @@
     <div id="start-screen" class="ui-screen">
         <h1 class="theme-blue">RENDER RUSH <span style="font-size:40px">🚀</span></h1>
         <p class="desc">
-            <span style="color:#00e5ff">드래그:</span> 로켓 이동 + 자동 발사<br>
-            <span style="color:#d500f9">500점 마다:</span> 필살기<br>
+            <span style="color:#00e5ff">드래그:</span> 이동 + 자동 공격<br>
+            <span style="color:#d500f9">500점 마다:</span> 필살기 발동<br>
             보스 처치 시 게임 클리어!
         </p>
         <button id="start-btn">TAP TO START</button>
@@ -107,12 +105,12 @@
         <div id="score-display" class="hud-text">SCORE: 0</div>
         <div id="hp-display">❤️❤️❤️❤️❤️</div>
     </div>
+    
     <div id="progress-container"><div id="progress-bar"></div></div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // 모바일 스크롤 방지 (매우 중요)
         document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
         window.onerror = function(msg, url, line) {
@@ -170,10 +168,13 @@
         const scoreEl = document.getElementById('score-display');
         const hpEl = document.getElementById('hp-display');
         const startBtn = document.getElementById('start-btn');
+        
+        // [수정] 여기가 누락되었던 부분입니다!
+        const progressContainer = document.getElementById('progress-container');
         const progressBar = document.getElementById('progress-bar');
+        
         const dmgOverlay = document.getElementById('damage-overlay');
 
-        // [모바일 최적화] 리사이징 처리
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -204,43 +205,37 @@
         let boss = null;
         let player = { size: 40, emoji: '🚀', hp: MAX_HP, invincible: 0, fireRateMod: 1 }; 
 
-        for(let i=0; i<80; i++) { // 모바일 성능 고려 별 개수 감소
+        for(let i=0; i<80; i++) { 
             bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 0.5, speed: Math.random() * 3 + 1 });
         }
 
-        // [입력 처리] 마우스 & 터치 통합
         function handleStart(x, y) {
             isMouseDown = true;
             mouse.x = x; mouse.y = y;
         }
         function handleMove(x, y) {
-            // 터치/마우스가 화면 밖으로 나가지 않게 보정
             mouse.x = Math.max(0, Math.min(canvas.width, x));
             mouse.y = Math.max(0, Math.min(canvas.height, y));
         }
         function handleEnd() { isMouseDown = false; }
 
-        // 마우스
         window.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
         window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
         window.addEventListener('mouseup', handleEnd);
         
-        // 터치 (패시브 옵션 끄기 중요)
         window.addEventListener('touchstart', e => { 
             handleStart(e.touches[0].clientX, e.touches[0].clientY);
         }, {passive: false});
         window.addEventListener('touchmove', e => { 
-            e.preventDefault(); // 스크롤 방지
+            e.preventDefault(); 
             handleMove(e.touches[0].clientX, e.touches[0].clientY); 
         }, {passive: false});
         window.addEventListener('touchend', handleEnd);
 
         startBtn.addEventListener('click', (e) => { 
-            // 모바일 터치 시 더블 탭 확대 방지용
             e.preventDefault(); 
             startGame(); 
         });
-        // 모바일 터치 대응
         startBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
             startGame();
@@ -274,7 +269,7 @@
 
         class Boss {
             constructor() {
-                this.x = canvas.width / 2; this.y = -100; this.targetY = canvas.height * 0.2; // 화면 비율로 위치 설정
+                this.x = canvas.width / 2; this.y = -100; this.targetY = canvas.height * 0.2; 
                 this.size = 120;
                 this.hp = 3000; this.maxHp = 3000;
                 this.emoji = '👹';
@@ -288,7 +283,7 @@
                 this.x += this.speedX; this.y += this.speedY;
                 const margin = 60;
                 if (this.x < margin || this.x > canvas.width - margin) this.speedX *= -1;
-                if (this.y < margin || this.y > canvas.height * 0.4) this.speedY *= -1; // 모바일 화면 고려 가동 범위 축소
+                if (this.y < margin || this.y > canvas.height * 0.4) this.speedY *= -1; 
                 if (Math.random() < 0.02) this.speedX *= -1;
                 if (Math.random() < 0.02) this.speedY *= -1;
             }
@@ -352,7 +347,11 @@
             try {
                 initAudio();
                 startScreen.classList.add('hidden'); failScreen.classList.add('hidden'); clearScreen.classList.add('hidden');
-                hudLayer.style.display = 'block'; progressContainer.style.display = 'block';
+                
+                // 여기서 에러가 났었습니다. 이제 해결되었습니다!
+                hudLayer.style.display = 'block'; 
+                progressContainer.style.display = 'block';
+                
                 bossHud.style.display = 'none'; 
                 document.body.style.cursor = 'none';
                 
@@ -366,8 +365,6 @@
                 updateHP();
 
                 isRunning = true; 
-                
-                // 모바일 터치 시작 시 자동 발사 활성화
                 isMouseDown = false; 
                 
                 ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -430,7 +427,6 @@
             let fireRate = Math.floor(5 / player.fireRateMod); 
             if (fireRate < 2) fireRate = 2;
             
-            // 모바일: 터치 중이면 자동 발사
             if (isMouseDown && score % fireRate === 0) {
                 missiles.push(new Missile(mouse.x, mouse.y - 20, 0, false));
             }
