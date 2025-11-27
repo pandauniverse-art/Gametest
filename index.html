@@ -7,11 +7,31 @@
     <style>
         body { 
             margin: 0; background: #050505; color: white; font-family: 'Pretendard', sans-serif; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;
+            user-select: none;
         }
-        h1 { font-size: 3rem; margin-bottom: 50px; background: linear-gradient(to right, #00e5ff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         
-        .game-grid { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
+        /* [언어 전환 버튼 스타일] */
+        .lang-switch {
+            position: absolute; top: 20px; right: 30px;
+            display: flex; gap: 10px; z-index: 100;
+        }
+        .lang-btn {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #aaa; padding: 5px 15px; border-radius: 20px; cursor: pointer;
+            font-weight: bold; transition: 0.3s;
+        }
+        .lang-btn.active {
+            background: #00e5ff; color: #000; border-color: #00e5ff; box-shadow: 0 0 10px #00e5ff;
+        }
+        
+        h1 { 
+            font-size: 3rem; margin-bottom: 50px; text-align: center;
+            background: linear-gradient(to right, #00e5ff, #ff00ff); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+        }
+        
+        .game-grid { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 20px; }
         
         .game-card {
             width: 250px; height: 350px;
@@ -27,30 +47,95 @@
         
         .game-icon { font-size: 80px; margin-bottom: 20px; }
         .game-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .game-desc { font-size: 14px; color: #aaa; text-align: center; padding: 0 20px; }
+        .game-desc { font-size: 14px; color: #aaa; text-align: center; padding: 0 20px; line-height: 1.5; }
         
         .badge { position: absolute; top: 15px; right: 15px; background: #ff00ff; padding: 5px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+        
+        /* 모바일 대응 */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; margin-top: 50px; }
+            .game-card { width: 100%; max-width: 300px; height: 120px; flex-direction: row; justify-content: flex-start; padding-left: 20px; }
+            .game-icon { font-size: 40px; margin-bottom: 0; margin-right: 20px; }
+            .game-info { text-align: left; }
+            .game-title { font-size: 20px; margin-bottom: 5px; }
+            .game-desc { padding: 0; text-align: left; }
+        }
     </style>
 </head>
 <body>
 
-    <h1>PANDA UNIVERSE ARCADE</h1>
+    <div class="lang-switch">
+        <button class="lang-btn active" id="btn-kr" onclick="setLanguage('kr')">KR</button>
+        <button class="lang-btn" id="btn-en" onclick="setLanguage('en')">EN</button>
+    </div>
+
+    <h1 data-lang="mainTitle">PANDA UNIVERSE ARCADE</h1>
 
     <div class="game-grid">
         <a href="game1.html" class="game-card">
-            <div class="badge">HOT</div>
+            <div class="badge" data-lang="badgeHot">HOT</div>
             <div class="game-icon">🚀</div>
-            <div class="game-title">RENDER RUSH</div>
-            <p class="game-desc">Boss Battle & Action<br>Shooting Game</p>
+            <div class="game-info">
+                <div class="game-title">RENDER RUSH</div>
+                <p class="game-desc" data-lang="desc1">Boss Battle & Action<br>Shooting Game</p>
+            </div>
         </a>
 
         <a href="game2.html" class="game-card">
-            <div class="badge">NEW</div>
+            <div class="badge" data-lang="badgeNew">NEW</div>
             <div class="game-icon">🏗️</div>
-            <div class="game-title">NEON STACK</div>
-            <p class="game-desc">Timing & Rhythm<br>Stacking Game</p>
+            <div class="game-info">
+                <div class="game-title">NEON STACK</div>
+                <p class="game-desc" data-lang="desc2">Timing & Rhythm<br>Stacking Game</p>
+            </div>
         </a>
     </div>
+
+    <script>
+        // [번역 데이터] 여기에 내용을 추가하면 됩니다.
+        const translations = {
+            kr: {
+                mainTitle: "판다 유니버스 아케이드",
+                badgeHot: "인기",
+                badgeNew: "신규",
+                desc1: "보스 배틀 & 액션<br>슈팅 게임",
+                desc2: "타이밍 & 리듬<br>블록 쌓기"
+            },
+            en: {
+                mainTitle: "PANDA UNIVERSE ARCADE",
+                badgeHot: "HOT",
+                badgeNew: "NEW",
+                desc1: "Boss Battle & Action<br>Shooting Game",
+                desc2: "Timing & Rhythm<br>Stacking Game"
+            }
+        };
+
+        // 초기화: 저장된 언어가 있으면 불러오고, 없으면 한국어(kr) 기본
+        let currentLang = localStorage.getItem('siteLang') || 'kr';
+        applyLanguage(currentLang);
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('siteLang', lang); // 설정 저장
+            applyLanguage(lang);
+        }
+
+        function applyLanguage(lang) {
+            // 1. 버튼 스타일 업데이트
+            document.getElementById('btn-kr').classList.remove('active');
+            document.getElementById('btn-en').classList.remove('active');
+            document.getElementById(`btn-${lang}`).classList.add('active');
+
+            // 2. 텍스트 교체 (data-lang 속성이 있는 모든 요소 찾기)
+            const elements = document.querySelectorAll('[data-lang]');
+            elements.forEach(el => {
+                const key = el.getAttribute('data-lang');
+                if (translations[lang][key]) {
+                    el.innerHTML = translations[lang][key]; // innerHTML로 태그(<br>)까지 적용
+                }
+            });
+        }
+    </script>
 
 </body>
 </html>
