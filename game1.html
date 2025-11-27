@@ -1,100 +1,372 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Render Rush: Ultimate Roguelike</title>
-<style>
-body{margin:0;overflow:hidden;background:radial-gradient(circle at center,#1a1a2e 0%,#050505 100%);font-family:'Pretendard',sans-serif;color:white;user-select:none;touch-action:none}
-canvas{display:block}
-.crt-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(rgba(18,16,16,0)50%,rgba(0,0,0,0.25)50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06));background-size:100% 3px,3px 100%;pointer-events:none;z-index:999;box-shadow:inset 0 0 100px rgba(0,0,0,0.9);animation:flicker 0.15s infinite}
-@keyframes flicker{0%{opacity:0.95}100%{opacity:1}}
-.ui-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:100}
-.hidden{display:none!important}
-.glass-panel{background:rgba(20,20,30,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:40px;text-align:center;width:80%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,0.37)}
-h1{font-size:8vmin;margin:0 0 20px;background:linear-gradient(to right,#00e5ff,#2979ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 30px rgba(0,229,255,0.3)}
-button{padding:15px 40px;font-size:4vmin;font-weight:bold;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,#00e5ff,#00b8d4);color:#000;margin-top:20px;box-shadow:0 0 20px rgba(0,229,255,0.4)}
-#hud-layer{position:absolute;top:20px;left:20px;z-index:10;pointer-events:none}
-.hud-value{font-size:24px;font-weight:700;color:white;font-family:'Courier New',monospace;text-shadow:0 0 10px rgba(0,229,255,0.5)}
-#boss-hud{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:70%;max-width:600px;z-index:20;display:none;background:rgba(0,0,0,0.5);padding:10px;border-radius:30px;border:1px solid rgba(255,42,109,0.3)}
-#boss-hp-bar{width:100%;height:10px;background:linear-gradient(90deg,#ff2a6d,#ff5252);border-radius:5px;transition:width 0.1s}
-#back-btn{position:absolute;top:20px;right:20px;padding:10px 20px;background:rgba(255,255,255,0.1);color:white;text-decoration:none;border-radius:20px;z-index:999;backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,0.2)}
-#levelup-screen{background:rgba(0,0,0,0.9)}
-.card-container{display:flex;gap:15px;justify-content:center;flex-wrap:wrap;margin-top:20px}
-.skill-card{background:linear-gradient(135deg,#1a1a2e,#16213e);border:2px solid #00e5ff;border-radius:15px;padding:20px;width:120px;cursor:pointer;transition:0.3s;box-shadow:0 0 15px rgba(0,229,255,0.2);text-align:center}
-.skill-card:hover{transform:scale(1.1);box-shadow:0 0 30px rgba(0,229,255,0.5);background:linear-gradient(135deg,#00e5ff,#2979ff)}
-.skill-icon{font-size:50px;margin-bottom:10px}
-.skill-name{font-size:16px;font-weight:bold;color:#fff}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Render Rush: Complete</title>
+    <style>
+        /* [스타일] 비주얼 & UI */
+        body { 
+            margin: 0; overflow: hidden; 
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+            font-family: 'Pretendard', sans-serif; color: white; 
+            user-select: none; touch-action: none; 
+        }
+        canvas { display: block; }
+
+        /* CRT 효과 */
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%; pointer-events: none; z-index: 999;
+        }
+
+        /* UI 레이어 */
+        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; }
+        .hidden { display: none !important; }
+        
+        .glass-panel { 
+            background: rgba(20, 20, 30, 0.8); backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px; 
+            padding: 40px; text-align: center; width: 90%; max-width: 500px;
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.3);
+        }
+
+        h1 { font-size: 40px; margin: 0 0 20px; color: #00e5ff; text-shadow: 0 0 10px #00e5ff; }
+        p { color: #ccc; font-size: 18px; margin-bottom: 30px; }
+        button { padding: 15px 40px; font-size: 20px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; background: #00e5ff; color: #000; box-shadow: 0 0 15px #00e5ff; margin-top: 10px; }
+        
+        #back-btn { position: absolute; top: 20px; right: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: white; text-decoration: none; border-radius: 20px; z-index: 1000; }
+
+        /* HUD */
+        #hud-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; }
+        .hud-text { font-size: 24px; font-weight: bold; text-shadow: 0 0 5px black; }
+        #score { color: #00e5ff; }
+        #hp { margin-top: 5px; font-size: 20px; letter-spacing: 3px; }
+
+        /* 보스 HUD */
+        #boss-hud { position: absolute; top: 70px; left: 50%; transform: translateX(-50%); width: 60%; display: none; z-index: 10; }
+        #boss-hp-bar { width: 100%; height: 10px; background: #333; border: 2px solid white; border-radius: 5px; overflow: hidden; }
+        #boss-hp-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #ff0055, #ff5500); transition: width 0.1s; }
+
+        /* 스킬 카드 (로그라이크) */
+        .card-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .skill-card { 
+            background: linear-gradient(135deg, #222, #333); border: 2px solid #555; 
+            border-radius: 15px; padding: 20px; width: 100px; cursor: pointer; transition: 0.2s; 
+        }
+        .skill-card:hover { transform: scale(1.1); border-color: #00e5ff; box-shadow: 0 0 20px rgba(0, 229, 255, 0.5); }
+        .skill-icon { font-size: 40px; margin-bottom: 10px; }
+        .skill-name { font-size: 14px; font-weight: bold; color: white; }
+        .skill-desc { font-size: 10px; color: #aaa; margin-top: 5px; }
+
+    </style>
 </head>
 <body>
-<div class="crt-overlay"></div>
-<a href="index.html" id="back-btn">🏠 HOME</a>
-<div id="boss-hud"><div style="font-weight:bold;color:#ff2a6d;text-align:center;margin-bottom:5px">WARNING: BOSS</div><div style="background:#333;border-radius:5px;overflow:hidden"><div id="boss-hp-bar"></div></div></div>
-<div id="hud-layer">SCORE: <span class="hud-value" id="score">0</span> <div id="hp" style="font-size:24px;margin-top:5px">❤️❤️❤️❤️❤️</div></div>
-<div id="start-screen" class="ui-screen"><div class="glass-panel"><h1>RENDER RUSH</h1><p>Roguelike Edition</p><button onclick="startGame()">INITIALIZE</button></div></div>
-<div id="levelup-screen" class="ui-screen hidden"><h1>LEVEL UP!</h1><p>Choose Your Upgrade</p><div class="card-container" id="skill-cards"></div></div>
-<div id="fail-screen" class="ui-screen hidden"><div class="glass-panel"><h1 style="color:#ff2a6d">CRITICAL ERROR</h1><button onclick="startGame()">REBOOT</button></div></div>
-<div id="clear-screen" class="ui-screen hidden"><div class="glass-panel"><h1 style="color:#00ff88">RENDER COMPLETE</h1><button onclick="startGame()">NEW TASK</button></div></div>
-<canvas id="canvas"></canvas>
-<script>
-const cvs=document.getElementById('canvas'),ctx=cvs.getContext('2d');
-let w,h,state,player,enemies=[],missiles=[],boss=null,stars=[],animId;
-const SKILLS=[{id:'multi',icon:'🔱',name:'Multi Shot'},{id:'dmg',icon:'💪',name:'Damage Up'},{id:'speed',icon:'⚡',name:'Fire Rate'},{id:'heal',icon:'❤️',name:'Heal HP'}];
-function resize(){w=cvs.width=window.innerWidth;h=cvs.height=window.innerHeight}window.addEventListener('resize',resize);resize();
-for(let i=0;i<50;i++)stars.push({x:Math.random()*w,y:Math.random()*h,s:Math.random()*2,v:Math.random()*2+1});
-function startGame(){
- document.querySelectorAll('.ui-screen').forEach(e=>e.classList.add('hidden'));
- state={run:true,score:0,levelScore:500,mouse:{x:w/2,y:h/2},click:false,frame:0};
- player={x:w/2,y:h/2,hp:5,invin:0,dmg:10,rate:1,multi:1};
- enemies=[];missiles=[];boss=null;updateHUD();document.getElementById('boss-hud').style.display='none';
- document.body.style.cursor='none';loop();
-}
-function loop(){
- if(!state.run)return;animId=requestAnimationFrame(loop);state.frame++;
- ctx.clearRect(0,0,w,h);
- ctx.fillStyle='#fff';stars.forEach(s=>{s.y+=s.v;if(s.y>h)s.y=0;ctx.beginPath();ctx.arc(s.x,s.y,s.s,0,6.28);ctx.fill()});
- if(state.click&&state.frame%Math.max(5,30-player.rate*5)==0){
-  for(let i=0;i<player.multi;i++){
-   let angle=(i-(player.multi-1)/2)*0.2;
-   missiles.push({x:state.mouse.x,y:state.mouse.y-20,vx:Math.sin(angle)*15,vy:-Math.cos(angle)*15,dmg:player.dmg});
-  }
- }
- if(state.score>=state.levelScore&&!boss){state.run=false;showLevelUp();}
- if(!boss&&state.score>=2000){boss={x:w/2,y:100,hp:1000,max:1000,vx:2,vy:1};document.getElementById('boss-hud').style.display='block';}
- if(state.frame%(boss?60:40)==0)enemies.push({x:Math.random()*w,y:-50,hp:20,s:Math.random()*2+2});
- ctx.font='40px serif';ctx.textAlign='center';ctx.fillText('🚀',state.mouse.x,state.mouse.y);
- missiles.forEach((m,i)=>{m.x+=m.vx;m.y+=m.vy;ctx.fillText('🔥',m.x,m.y);if(m.y<-50)missiles.splice(i,1)});
- enemies.forEach((e,i)=>{e.y+=e.s;ctx.fillText('👾',e.x,e.y);
-  if(Math.hypot(e.x-state.mouse.x,e.y-state.mouse.y)<40)hitPlayer();
-  missiles.forEach((m,j)=>{if(Math.hypot(e.x-m.x,e.y-m.y)<30){e.hp-=m.dmg;missiles.splice(j,1);if(e.hp<=0){enemies.splice(i,1);state.score+=10;updateHUD()}}});
-  if(e.y>h)enemies.splice(i,1);
- });
- if(boss){
-  boss.x+=boss.vx;boss.y+=boss.vy;if(boss.x<50||boss.x>w-50)boss.vx*=-1;if(boss.y<50||boss.y>200)boss.vy*=-1;
-  ctx.font='100px serif';ctx.fillText('👹',boss.x,boss.y);
-  document.getElementById('boss-hp-bar').style.width=(boss.hp/boss.max*100)+'%';
-  if(Math.hypot(boss.x-state.mouse.x,boss.y-state.mouse.y)<80)hitPlayer();
-  missiles.forEach((m,i)=>{if(Math.hypot(m.x-boss.x,m.y-boss.y)<60){boss.hp-=m.dmg;missiles.splice(i,1);if(boss.hp<=0)win()}});
- }
- if(player.invin>0)player.invin--;
-}
-function hitPlayer(){if(player.invin>0)return;player.hp--;player.invin=60;updateHUD();if(player.hp<=0)fail();}
-function updateHUD(){document.getElementById('score').innerText=state.score;let h='';for(let i=0;i<player.hp;i++)h+='❤️';document.getElementById('hp').innerText=h;}
-function showLevelUp(){
- document.getElementById('levelup-screen').classList.remove('hidden');document.body.style.cursor='default';
- const con=document.getElementById('skill-cards');con.innerHTML='';
- SKILLS.sort(()=>Math.random()-0.5).slice(0,3).forEach(s=>{
-  let d=document.createElement('div');d.className='skill-card';
-  d.innerHTML=`<div class="skill-icon">${s.icon}</div><div class="skill-name">${s.name}</div>`;
-  d.onclick=()=>{applySkill(s.id);document.getElementById('levelup-screen').classList.add('hidden');state.levelScore+=500;state.run=true;document.body.style.cursor='none';loop()};
-  con.appendChild(d);
- });
-}
-function applySkill(id){if(id=='multi')player.multi++;if(id=='dmg')player.dmg+=10;if(id=='speed')player.rate++;if(id=='heal'&&player.hp<5){player.hp++;updateHUD();}}
-function fail(){state.run=false;document.body.style.cursor='default';document.getElementById('fail-screen').classList.remove('hidden');}
-function win(){state.run=false;document.body.style.cursor='default';document.getElementById('clear-screen').classList.remove('hidden');}
-window.onmousemove=e=>{if(state)state.mouse={x:e.clientX,y:e.clientY}};window.onmousedown=()=>state.click=true;window.onmouseup=()=>state.click=false;
-document.addEventListener('touchmove',e=>{e.preventDefault();state.mouse={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:false});
-document.addEventListener('touchstart',e=>{state.click=true;state.mouse={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:false});
-document.addEventListener('touchend',()=>state.click=false);
-</script></body></html>
+    <div class="crt-overlay"></div>
+    <a href="index.html" id="back-btn">🏠 HOME</a>
+
+    <div id="hud-layer">
+        <div class="hud-text">SCORE: <span id="score">0</span></div>
+        <div id="hp">❤️❤️❤️❤️❤️</div>
+    </div>
+
+    <div id="boss-hud">
+        <div style="text-align:center; color:#ff0055; font-weight:bold; margin-bottom:5px;">WARNING: BOSS</div>
+        <div id="boss-hp-bar"><div id="boss-hp-fill"></div></div>
+    </div>
+
+    <div id="start-screen" class="ui-screen">
+        <div class="glass-panel">
+            <h1>RENDER RUSH</h1>
+            <p>Hold Click to Shoot<br>500 PTS = Level Up!</p>
+            <button onclick="startGame()">START RENDER</button>
+        </div>
+    </div>
+
+    <div id="levelup-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1>LEVEL UP!</h1>
+            <p>Choose an Upgrade</p>
+            <div class="card-container" id="skill-cards">
+                </div>
+        </div>
+    </div>
+
+    <div id="pause-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1>PAUSED</h1>
+            <button onclick="togglePause()">RESUME</button>
+            <button onclick="location.href='index.html'" style="background:#444">EXIT</button>
+        </div>
+    </div>
+
+    <div id="fail-screen" class="ui-screen hidden">
+        <div class="glass-panel"><h1 style="color:red">SYSTEM CRASH</h1><button onclick="startGame()">RETRY</button></div>
+    </div>
+    <div id="clear-screen" class="ui-screen hidden">
+        <div class="glass-panel"><h1 style="color:#0f0">RENDER DONE</h1><button onclick="startGame()">NEW WORK</button></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let w, h;
+
+        // 게임 상태
+        let state = { running: false, paused: false, score: 0, frame: 0, nextSkill: 500 };
+        let player = { x: 0, y: 0, hp: 5, invin: 0, dmg: 10, rate: 1, multi: 1 };
+        let entities = { enemies: [], missiles: [], stars: [], boss: null };
+        let mouse = { x: 0, y: 0, down: false };
+
+        // 스킬 목록
+        const SKILLS = [
+            { id: 'multi', name: 'Multi Shot', icon: '🔱', desc: '+1 Projectile' },
+            { id: 'dmg', name: 'Power Up', icon: '💪', desc: '+10 Damage' },
+            { id: 'speed', name: 'Rapid Fire', icon: '⚡', desc: '+Fire Rate' },
+            { id: 'heal', name: 'Repair', icon: '❤️', desc: '+1 HP' }
+        ];
+
+        function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        // 별 초기화
+        for(let i=0; i<50; i++) entities.stars.push({ x: Math.random()*w, y: Math.random()*h, s: Math.random()*2, v: Math.random()*2+0.5 });
+
+        // --- 입력 처리 ---
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mousedown', () => mouse.down = true);
+        window.addEventListener('mouseup', () => mouse.down = false);
+        window.addEventListener('keydown', e => { if(e.key === 'Escape') togglePause(); });
+        
+        // 터치 지원
+        canvas.addEventListener('touchmove', e => { 
+            e.preventDefault(); 
+            mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; 
+        }, {passive: false});
+        canvas.addEventListener('touchstart', e => { mouse.down = true; mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; }, {passive: false});
+        canvas.addEventListener('touchend', () => mouse.down = false);
+
+        function startGame() {
+            document.querySelectorAll('.ui-screen').forEach(el => el.classList.add('hidden'));
+            document.getElementById('boss-hud').style.display = 'none';
+            document.body.style.cursor = 'none';
+
+            state = { running: true, paused: false, score: 0, frame: 0, nextSkill: 500 };
+            player = { x: w/2, y: h/2, hp: 5, invin: 0, dmg: 10, rate: 1, multi: 1 };
+            entities.enemies = []; entities.missiles = []; entities.boss = null;
+            
+            updateHUD();
+            loop();
+        }
+
+        function togglePause() {
+            if (!state.running) return;
+            state.paused = !state.paused;
+            const screen = document.getElementById('pause-screen');
+            if (state.paused) {
+                screen.classList.remove('hidden');
+                document.body.style.cursor = 'default';
+            } else {
+                screen.classList.add('hidden');
+                document.body.style.cursor = 'none';
+                loop();
+            }
+        }
+
+        // --- 스킬 시스템 ---
+        function triggerLevelUp() {
+            state.paused = true;
+            document.body.style.cursor = 'default';
+            const screen = document.getElementById('levelup-screen');
+            const container = document.getElementById('skill-cards');
+            container.innerHTML = '';
+            screen.classList.remove('hidden');
+
+            // 랜덤 스킬 3개 뽑기
+            const choices = [...SKILLS].sort(() => Math.random() - 0.5).slice(0, 3);
+            
+            choices.forEach(skill => {
+                const card = document.createElement('div');
+                card.className = 'skill-card';
+                card.innerHTML = `<div class="skill-icon">${skill.icon}</div><div class="skill-name">${skill.name}</div><div class="skill-desc">${skill.desc}</div>`;
+                card.onclick = () => selectSkill(skill.id);
+                container.appendChild(card);
+            });
+        }
+
+        function selectSkill(id) {
+            if (id === 'multi') player.multi++;
+            if (id === 'dmg') player.dmg += 10;
+            if (id === 'speed') player.rate++;
+            if (id === 'heal' && player.hp < 5) { player.hp++; updateHUD(); }
+
+            document.getElementById('levelup-screen').classList.add('hidden');
+            state.nextSkill += 500; // 다음 스킬 목표
+            state.paused = false;
+            document.body.style.cursor = 'none';
+            loop();
+        }
+
+        // --- 메인 루프 ---
+        function loop() {
+            if (!state.running || state.paused) return;
+            requestAnimationFrame(loop);
+            state.frame++;
+
+            // 1. 배경
+            ctx.fillStyle = '#121212'; ctx.fillRect(0, 0, w, h);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            entities.stars.forEach(s => {
+                s.y += s.v; if(s.y > h) s.y = 0;
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, Math.PI*2); ctx.fill();
+            });
+
+            // 2. 플레이어 이동
+            player.x += (mouse.x - player.x) * 0.2;
+            player.y += (mouse.y - player.y) * 0.2;
+
+            // 3. 발사 (오토 파이어 or 클릭 파이어)
+            if (mouse.down && state.frame % Math.max(5, 20 - player.rate * 2) === 0) {
+                const spread = 0.2; // 부채꼴 각도
+                for(let i=0; i<player.multi; i++) {
+                    const angle = (i - (player.multi-1)/2) * spread;
+                    entities.missiles.push({
+                        x: player.x, y: player.y - 20,
+                        vx: Math.sin(angle) * 15, vy: -Math.cos(angle) * 15,
+                        dmg: player.dmg
+                    });
+                }
+            }
+
+            // 4. 레벨업 체크
+            if (state.score >= state.nextSkill && !entities.boss) {
+                triggerLevelUp();
+                return; // 루프 잠시 중단
+            }
+
+            // 5. 보스 등장 체크
+            if (state.score >= 2000 && !entities.boss) {
+                entities.boss = { x: w/2, y: -100, hp: 1500, max: 1500, vx: 2, vy: 1 };
+                document.getElementById('boss-hud').style.display = 'block';
+            }
+
+            // 6. 적 생성 (보스 없을 때만)
+            if (!entities.boss && state.frame % 40 === 0) {
+                entities.enemies.push({ x: Math.random()*w, y: -50, hp: 20 + (state.score/100), s: 3 });
+            }
+
+            // --- 엔티티 업데이트 및 그리기 ---
+
+            // 미사일
+            ctx.font = '20px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            entities.missiles.forEach((m, i) => {
+                m.x += m.vx; m.y += m.vy;
+                ctx.fillText('🔥', m.x, m.y);
+                if (m.y < -50 || m.x < -50 || m.x > w+50) entities.missiles.splice(i, 1);
+            });
+
+            // 플레이어
+            if (player.invin > 0) player.invin--;
+            ctx.globalAlpha = player.invin > 0 ? 0.5 : 1;
+            ctx.font = '40px serif';
+            ctx.fillText('🚀', player.x, player.y);
+            ctx.globalAlpha = 1;
+
+            // 적
+            entities.enemies.forEach((e, i) => {
+                e.y += e.s;
+                ctx.fillText('👾', e.x, e.y);
+
+                // 플레이어 충돌
+                if (Math.hypot(e.x - player.x, e.y - player.y) < 40) {
+                    takeDamage();
+                    entities.enemies.splice(i, 1);
+                }
+
+                // 미사일 충돌
+                entities.missiles.forEach((m, j) => {
+                    if (Math.hypot(e.x - m.x, e.y - m.y) < 30) {
+                        e.hp -= m.dmg;
+                        entities.missiles.splice(j, 1);
+                        if (e.hp <= 0) {
+                            entities.enemies.splice(i, 1);
+                            state.score += 10;
+                            updateHUD();
+                        }
+                    }
+                });
+
+                if (e.y > h) entities.enemies.splice(i, 1);
+            });
+
+            // 보스
+            if (entities.boss) {
+                let b = entities.boss;
+                // 등장 연출
+                if (b.y < 100) b.y += 2;
+                else {
+                    b.x += b.vx;
+                    if (b.x < 50 || b.x > w - 50) b.vx *= -1;
+                    // 보스 공격 (단순화: 1초마다 탄막)
+                    if (state.frame % 60 === 0) {
+                        entities.enemies.push({ x: b.x, y: b.y, hp: 1, s: 6 }); // 빠른 쫄병 발사
+                    }
+                }
+
+                ctx.font = '100px serif';
+                ctx.fillText('👹', b.x, b.y);
+                document.getElementById('boss-hp-fill').style.width = (b.hp / b.max * 100) + '%';
+
+                // 플레이어 충돌
+                if (Math.hypot(b.x - player.x, b.y - player.y) < 80) takeDamage();
+
+                // 미사일 피격
+                entities.missiles.forEach((m, i) => {
+                    if (Math.hypot(m.x - b.x, m.y - b.y) < 60) {
+                        b.hp -= m.dmg;
+                        entities.missiles.splice(i, 1);
+                        if (b.hp <= 0) gameClear();
+                    }
+                });
+            }
+        }
+
+        function takeDamage() {
+            if (player.invin > 0) return;
+            player.hp--;
+            player.invin = 60;
+            updateHUD();
+            // 화면 흔들림 효과 (간단)
+            document.body.style.transform = 'translate(5px, 5px)';
+            setTimeout(() => document.body.style.transform = 'translate(0, 0)', 100);
+            
+            if (player.hp <= 0) gameOver();
+        }
+
+        function updateHUD() {
+            document.getElementById('score').innerText = state.score;
+            let hearts = "";
+            for(let i=0; i<player.hp; i++) hearts += "❤️";
+            for(let i=player.hp; i<5; i++) hearts += "🖤";
+            document.getElementById('hp').innerText = hearts;
+        }
+
+        function gameOver() {
+            state.running = false;
+            document.body.style.cursor = 'default';
+            document.getElementById('fail-screen').classList.remove('hidden');
+        }
+
+        function gameClear() {
+            state.running = false;
+            document.body.style.cursor = 'default';
+            document.getElementById('clear-screen').classList.remove('hidden');
+        }
+
+    </script>
+</body>
+</html>
