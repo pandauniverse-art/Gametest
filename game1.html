@@ -3,119 +3,644 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Game 1: Render Rush</title>
+    <title>Render Rush: Complete</title>
     <style>
-        /* 기존 스타일 유지 + 일시정지 화면 추가 */
-        body { margin: 0; overflow: hidden; background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%); font-family: 'Pretendard', sans-serif; color: white; user-select: none; -webkit-user-select: none; touch-action: none; }
-        canvas { display: block; }
-        .crt-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 3px, 3px 100%; pointer-events: none; z-index: 999; box-shadow: inset 0 0 100px rgba(0,0,0,0.9); animation: flicker 0.15s infinite; }
+        /* [스타일] 전체적인 룩앤필 */
+        body { 
+            margin: 0; overflow: hidden; 
+            background: radial-gradient(circle at center, #1a1a2e 0%, #050505 100%);
+            font-family: 'Pretendard', sans-serif; color: white; 
+            user-select: none; -webkit-user-select: none; touch-action: none; 
+            transition: background 2s ease-in-out;
+        }
+        
+        /* CRT 오버레이 */
+        .crt-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none; z-index: 999;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            animation: flicker 0.15s infinite;
+        }
         @keyframes flicker { 0% { opacity: 0.95; } 100% { opacity: 1; } }
+
+        /* 애니메이션 효과 */
+        .shake-small { animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-medium { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        .shake-hard { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; transform-origin: center; }
+        .glitch-effect { animation: glitch-anim 0.3s infinite; filter: contrast(200%) brightness(150%); }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        @keyframes glitch-anim {
+            0% { transform: translate(0); text-shadow: -2px 0 red, 2px 0 blue; }
+            50% { transform: translate(5px, -5px); text-shadow: -2px 0 red, 2px 0 blue; }
+            100% { transform: translate(0); }
+        }
+
+        /* UI 요소 */
+        canvas { display: block; }
+        .glass-panel {
+            background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px;
+        }
         .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; transition: opacity 0.5s; }
         .hidden { opacity: 0; pointer-events: none; }
-        .glass-panel { background: rgba(20, 20, 30, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; }
-        h1 { font-size: 8vmin; margin: 0 0 20px 0; font-weight: 800; background: linear-gradient(to right, #00e5ff, #2979ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p.desc { font-size: 3.5vmin; color: #d0d0e0; margin-bottom: 30px; }
-        button { padding: 15px 50px; font-size: 4vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #00e5ff, #00b8d4); color: #000; margin-top: 20px; }
+        
+        h1 { font-size: 8vmin; margin: 0 0 20px 0; font-weight: 800; background: linear-gradient(to right, #00e5ff, #2979ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 30px rgba(0, 229, 255, 0.3); }
+        p.desc { font-size: 3.5vmin; color: #d0d0e0; margin-bottom: 30px; line-height: 1.6; }
+        p.desc span { color: #fff; font-weight: bold; }
+        
+        button { padding: 15px 50px; font-size: 4vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.3s; background: linear-gradient(135deg, #00e5ff, #00b8d4); color: #000; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); margin-top: 20px; }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+
+        /* 볼륨 슬라이더 */
         .volume-control { margin-top: 20px; width: 100%; }
-        input[type=range] { width: 100%; }
+        .volume-label { font-size: 14px; color: #aaa; margin-bottom: 5px; display: block; font-weight: bold; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #333; border-radius: 5px; border: 1px solid #555; }
+        input[type=range]::-webkit-slider-thumb { height: 20px; width: 20px; border-radius: 50%; background: #00e5ff; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 0 10px #00e5ff; }
+
+        /* HUD 및 기타 UI */
+        #hud-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; display: none; text-align: left; }
+        .hud-item { margin-bottom: 8px; }
+        .hud-label { font-size: 12px; color: rgba(255,255,255,0.6); font-weight: 600; letter-spacing: 1px; }
+        .hud-value { font-size: 24px; font-weight: 700; color: white; font-family: 'Courier New', monospace; }
+        #score-val { color: #00e5ff; text-shadow: 0 0 10px rgba(0,229,255,0.5); }
+        #stage-val { color: #ffe600; }
+        #hp-display { font-size: 24px; margin-top: 5px; letter-spacing: 2px; }
+
+        #boss-hud { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); width: 70%; max-width: 600px; z-index: 20; display: none; background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 30px; backdrop-filter: blur(5px); border: 1px solid rgba(255, 42, 109, 0.3); }
+        #boss-name { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; color: #ff2a6d; letter-spacing: 2px; }
+        #boss-hp-track { width: 100%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; }
+        #boss-hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ff2a6d, #ff5252); transition: width 0.1s linear; }
+
+        #skill-alert { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 10vmin; font-weight: 900; color: #fff; font-style: italic; text-shadow: 0 0 20px #d500f9, 4px 4px 0px rgba(0,0,0,0.5); pointer-events: none; display: none; z-index: 50; white-space: nowrap; }
+        .pop-anim { animation: popUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popUp { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } 50% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+
+        #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, transparent 50%, red 150%); opacity: 0; pointer-events: none; z-index: 90; transition: opacity 0.1s; }
+        #progress-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 6px; background: #222; z-index: 10; display: none; }
+        #progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00e5ff, #2979ff); transition: width 0.1s linear; box-shadow: 0 0 10px #00e5ff; }
         
-        /* [일시정지 화면] */
-        #pause-screen { background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(5px); z-index: 200; display: none; }
-        
-        /* 뒤로가기 버튼 */
-        #back-btn { position: absolute; top: 20px; left: 20px; z-index: 200; padding: 10px 20px; background: #333; color: white; border: 1px solid #555; font-size: 14px; text-decoration: none; border-radius: 10px; }
+        /* [중요] 네비게이션 버튼 스타일 */
+        #back-btn { 
+            position: absolute; top: 20px; right: 20px; z-index: 200; 
+            padding: 10px 20px; background: rgba(0,0,0,0.5); 
+            color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.3); 
+            font-size: 14px; text-decoration: none; border-radius: 20px; 
+            transition: 0.3s; backdrop-filter: blur(5px);
+        }
+        #back-btn:hover { background: rgba(255,255,255,0.2); color: white; }
+
+        /* 일시정지 화면 */
+        #pause-screen { background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 150; display: none; }
     </style>
 </head>
-<body>
+<body class="theme-0">
+
     <div class="crt-overlay"></div>
+    <div id="damage-overlay"></div>
+    <div id="skill-alert">OVERDRIVE!</div>
+
     <a href="index.html" id="back-btn">⬅ HOME</a>
 
-    <div id="pause-screen" class="ui-screen">
-        <div class="glass-panel">
-            <h1>PAUSED</h1>
-            <p class="desc">Press ESC to Resume</p>
-            <button onclick="togglePause()">RESUME</button>
-            <button onclick="location.href='index.html'" style="background: #555; color: white;">EXIT GAME</button>
-        </div>
+    <div id="boss-hud">
+        <div id="boss-name">WARNING: MEMORY LEAK</div>
+        <div id="boss-hp-track"><div id="boss-hp-bar"></div></div>
     </div>
 
     <div id="start-screen" class="ui-screen">
         <div class="glass-panel">
             <h1>RENDER RUSH</h1>
-            <p class="desc">ESC: Pause Game</p>
-            <div class="volume-control"><input type="range" id="vol-slider" min="0" max="1" step="0.1" value="0.5"></div>
-            <button onclick="startGame()">START</button>
+            <p class="desc">
+                <span>DRAG</span> to Move & Auto-Fire<br>
+                <span>500 PTS</span> = Ultimate<br>
+                <span>ESC</span> to Pause
+            </p>
+            
+            <div class="volume-control">
+                <span class="volume-label">VOLUME <span id="vol-text">50%</span></span>
+                <input type="range" id="vol-slider" min="0" max="1" step="0.1" value="0.5">
+            </div>
+
+            <button id="start-btn">INITIALIZE</button>
         </div>
     </div>
+    
+    <div id="pause-screen" class="ui-screen">
+        <div class="glass-panel">
+            <h1>PAUSED</h1>
+            <p class="desc">Rendering Paused.</p>
+            <button onclick="togglePause()">RESUME</button>
+            <button onclick="location.href='index.html'" style="margin-top:10px; background:#444;">EXIT TO LOBBY</button>
+        </div>
+    </div>
+
     <div id="fail-screen" class="ui-screen hidden">
-        <div class="glass-panel"><h1>FAIL</h1><button onclick="restartGame()">RETRY</button></div>
+        <div class="glass-panel">
+            <h1 style="background: linear-gradient(to right, #ff5252, #ff2a6d); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CRITICAL ERROR</h1>
+            <p class="desc">System resources depleted.</p>
+            <button onclick="restartGame()">REBOOT</button>
+        </div>
     </div>
+    
     <div id="clear-screen" class="ui-screen hidden">
-        <div class="glass-panel"><h1>CLEAR</h1><button onclick="restartGame()">REPLAY</button></div>
+        <div class="glass-panel">
+            <h1 style="background: linear-gradient(to right, #00ff88, #00e5ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">RENDER COMPLETE</h1>
+            <p class="desc">Project exported successfully.</p>
+            <button onclick="restartGame()">NEW TASK</button>
+        </div>
     </div>
+
+    <div id="hud-layer">
+        <div class="hud-item"><span class="hud-label">STATUS</span><span class="hud-value" id="stage-val">LOADING</span></div>
+        <div class="hud-item"><span class="hud-label">FRAMES</span><span class="hud-value" id="score-val">0</span></div>
+        <div id="hp-display">❤️❤️❤️❤️❤️</div>
+    </div>
+    
+    <div id="progress-container"><div id="progress-bar"></div></div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
-        // (기존 Render Rush 코드의 핵심 로직 유지하되, ESC 기능 추가)
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        let animationId;
-        let isPaused = false;
-        let isRunning = false;
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
 
-        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.addEventListener('resize', resize); resize();
+        let audioCtx = null;
+        let masterVolume = 0.5;
+        let isPaused = false; // 일시정지 상태
 
-        // --- ESC 일시정지 로직 ---
+        const volSlider = document.getElementById('vol-slider');
+        const volText = document.getElementById('vol-text');
+        
+        volSlider.addEventListener('input', (e) => {
+            masterVolume = parseFloat(e.target.value);
+            volText.innerText = Math.round(masterVolume * 100) + "%";
+            if(audioCtx && audioCtx.state === 'running') playTone(440, 100, 'sine', 0.1); 
+        });
+
+        // 일시정지 기능
         window.addEventListener('keydown', (e) => {
-            if (e.key === "Escape" && isRunning) togglePause();
+            if (e.key === "Escape" && state.running) togglePause();
         });
 
         function togglePause() {
             isPaused = !isPaused;
             const pauseScreen = document.getElementById('pause-screen');
-            
-            if (isPaused) {
-                cancelAnimationFrame(animationId);
+            if(isPaused) {
                 pauseScreen.style.display = 'flex';
+                cancelAnimationFrame(animationId);
             } else {
                 pauseScreen.style.display = 'none';
-                animate();
+                loop(); // 루프 재개
             }
         }
 
-        // --- 게임 필수 변수 및 함수 (축약됨, 기존 로직 그대로 사용) ---
-        let score = 0;
-        let mouse = { x: canvas.width/2, y: canvas.height/2 };
-        
-        // (편의상 전체 코드를 다 넣진 않았지만, 기존 v9.0 코드에 위 ESC 로직만 섞으면 됩니다.)
-        // 아래는 작동을 위한 최소한의 더미 코드입니다. 실제로는 v9.0 코드를 사용하세요.
-        
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, dur, type = 'sine', vol = 0.05) {
+            if (!audioCtx || masterVolume <= 0) return; 
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.type = type; osc.frequency.value = freq;
+                gain.gain.setValueAtTime(vol * masterVolume, audioCtx.currentTime);
+                osc.start();
+                setTimeout(() => {
+                    if(gain && audioCtx) {
+                        gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.05);
+                        osc.stop(audioCtx.currentTime + 0.05);
+                    }
+                }, dur);
+            } catch(e) {}
+        }
+
+        const SFX = {
+            hit: () => playTone(200, 50, 'sawtooth'),
+            powerup: () => { playTone(600, 100, 'sine'); setTimeout(()=>playTone(900, 200, 'sine'), 100); },
+            damage: () => playTone(100, 200, 'square', 0.1),
+            bossHit: () => playTone(80, 50, 'square', 0.1),
+            skill: () => { playTone(400, 100, 'sine'); setTimeout(()=>playTone(800, 300, 'square'), 100); },
+            win: () => { playTone(523, 100); setTimeout(() => playTone(659, 100), 100); setTimeout(() => playTone(784, 400), 400); }
+        };
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ui = {
+            start: document.getElementById('start-screen'),
+            fail: document.getElementById('fail-screen'),
+            clear: document.getElementById('clear-screen'),
+            hud: document.getElementById('hud-layer'),
+            stage: document.getElementById('stage-val'),
+            score: document.getElementById('score-val'),
+            hp: document.getElementById('hp-display'),
+            bossHud: document.getElementById('boss-hud'),
+            bossBar: document.getElementById('boss-hp-bar'),
+            skillAlert: document.getElementById('skill-alert'),
+            progress: document.getElementById('progress-bar'),
+            progCont: document.getElementById('progress-container'),
+            dmgOverlay: document.getElementById('damage-overlay')
+        };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const SETTINGS = {
+            bossScore: 2000,
+            skillInterval: 500,
+            maxHp: 5,
+            stages: [
+                { limit: 0, spawn: 40, speed: 3, name: "ASSET LOAD", color: "#00e5ff", class: "theme-0" },
+                { limit: 600, spawn: 30, speed: 5, name: "RENDERING", color: "#d500f9", class: "theme-1" },
+                { limit: 1300, spawn: 20, speed: 7, name: "FINALIZING", color: "#ff9100", class: "theme-2" }
+            ]
+        };
+
+        let state = { running: false, score: 0, nextSkill: SETTINGS.skillInterval, stageIdx: 0, mouse: { x: canvas.width/2, y: canvas.height/2 }, mouseDown: false, frameCount: 0 };
+        let entities = { player: { size: 40, emoji: '🚀', hp: 5, invin: 0, rate: 1 }, enemies: [], missiles: [], bossMissiles: [], particles: [], items: [], texts: [], boss: null, stars: [] };
+
+        for(let i=0; i<60; i++) entities.stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 0.5, speed: Math.random() * 3 + 0.5 });
+
+        const setPos = (x, y) => { state.mouse.x = Math.max(0, Math.min(canvas.width, x)); state.mouse.y = Math.max(0, Math.min(canvas.height, y)); };
+        const down = (e) => { state.mouseDown = true; setPos(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY); };
+        const move = (e) => { if(state.mouseDown) setPos(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY); };
+        const up = () => { state.mouseDown = false; };
+
+        window.addEventListener('mousedown', down); window.addEventListener('mousemove', move); window.addEventListener('mouseup', up);
+        window.addEventListener('touchstart', (e) => { down(e); }, {passive:false});
+        window.addEventListener('touchmove', (e) => { e.preventDefault(); move(e); }, {passive:false});
+        window.addEventListener('touchend', up);
+
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('start-btn').addEventListener('touchstart', (e)=>{e.preventDefault(); startGame();});
+
+        // [Visual Functions]
+        function shakeScreen(type) {
+            const b = document.body;
+            b.classList.remove('shake-small','shake-medium','shake-hard');
+            void b.offsetWidth;
+            if(type===1) b.classList.add('shake-small');
+            if(type===2) b.classList.add('shake-medium');
+            if(type===3) b.classList.add('shake-hard');
+            setTimeout(()=>{ b.classList.remove('shake-small','shake-medium','shake-hard'); }, 500);
+        }
+
+        function triggerGlitch() {
+            document.body.classList.add('glitch-effect');
+            setTimeout(()=>document.body.classList.remove('glitch-effect'), 300);
+        }
+
+        function setTheme(idx) {
+            document.body.className = '';
+            if (idx === 'boss') document.body.classList.add('theme-boss');
+            else document.body.classList.add(SETTINGS.stages[idx].class);
+        }
+
+        // --- CLASSES ---
+        class Boss {
+            constructor() {
+                this.x = canvas.width / 2; this.y = -100; this.targetY = canvas.height * 0.15;
+                this.size = 100; this.hp = 1000; this.maxHp = 1000; this.emoji = '👹';
+                this.vx = 2; this.vy = 1; this.entered = false;
+            }
+            update() {
+                if (!this.entered) {
+                    this.y += 2; if (this.y >= this.targetY) this.entered = true; return;
+                }
+                this.x += this.vx; this.y += this.vy;
+                const margin = 80;
+                if (this.x < margin || this.x > canvas.width - margin) this.vx *= -1;
+                if (this.y < 20 || this.y > canvas.height * 0.3) this.vy *= -1;
+                if (Math.random() < 0.01) this.vx *= -1;
+                if (Math.random() < 0.01) this.vy *= -1;
+                if (state.frameCount % 240 === 0) shootAtPlayer(this.x, this.y);
+            }
+            draw() {
+                ctx.font = `${this.size}px serif`;
+                ctx.shadowBlur = 20; ctx.shadowColor = 'red';
+                ctx.fillText(this.emoji, this.x, this.y);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        class BossMissile {
+            constructor(x, y, tx, ty) {
+                this.x = x; this.y = y; this.size = 7; this.speed = 5; this.emoji = '🔮';
+                this.hp = 2; // 발사체 체력
+                const angle = Math.atan2(ty - y, tx - x);
+                this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed;
+            }
+            update() { this.x += this.vx; this.y += this.vy; }
+            draw() { ctx.font = `${this.size * 2}px serif`; ctx.fillText(this.emoji, this.x, this.y); }
+        }
+
+        class Missile {
+            constructor(x, y, angle=0, ultimate=false) {
+                this.x = x; this.y = y;
+                this.size = ultimate ? 30 : 20;
+                this.speed = 15;
+                this.emoji = ultimate ? '🔥' : '⚡';
+                this.vx = Math.sin(angle) * this.speed; this.vy = -Math.cos(angle) * this.speed;
+                this.dmg = ultimate ? 50 : 10;
+                this.isUlt = ultimate;
+            }
+            update() { this.x += this.vx; this.y += this.vy; }
+            draw() { ctx.font = `${this.size}px serif`; ctx.fillText(this.emoji, this.x, this.y); }
+        }
+
+        class Enemy {
+            constructor(speed) {
+                this.x = Math.random() * canvas.width; this.y = -50;
+                this.size = Math.random() * 20 + 25;
+                this.speed = (Math.random() * 2 + 1) + speed;
+                this.rot = Math.random(); this.rotSpeed = (Math.random()-0.5)*0.1;
+                this.del = false;
+                const r = Math.random();
+                if (r < 0.6) { this.hp = 10; this.emoji = '🐛'; this.score = 10; }
+                else if (r < 0.9) { this.hp = 20; this.emoji = '👾'; this.score = 20; }
+                else { this.hp = 30; this.emoji = '🤬'; this.score = 30; }
+            }
+            update() { this.y += this.speed; this.rot += this.rotSpeed; }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rot);
+                ctx.font = `${this.size}px serif`; ctx.fillText(this.emoji, 0, 0); ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x; this.y = y; this.alpha = 1;
+                if(type === 'boom') {
+                    this.size = Math.random()*15+5; this.emoji = '✨';
+                    this.vx = (Math.random()-0.5)*10; this.vy = (Math.random()-0.5)*10;
+                    this.decay = 0.08;
+                } else {
+                    this.size = Math.random()*10+5; this.emoji = '💨';
+                    this.vx = 0; this.vy = 2; this.y += 20;
+                    this.decay = 0.1;
+                }
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.alpha -= this.decay; }
+            draw() { if(this.alpha>0) { ctx.globalAlpha=this.alpha; ctx.fillText(this.emoji, this.x, this.y); ctx.globalAlpha=1; } }
+        }
+
+        class Item {
+            constructor(x, y) { this.x = x; this.y = y; this.speed = 3; this.emoji = ['💊','⚡','🛡️'][Math.floor(Math.random()*3)]; }
+            update() { this.y += this.speed; }
+            draw() { ctx.fillText(this.emoji, this.x, this.y); }
+        }
+
+        class FloatingText {
+            constructor(x, y, txt, col) { this.x = x; this.y = y; this.txt = txt; this.col = col; this.life = 30; }
+            update() { this.y -= 2; this.life--; }
+            draw() { ctx.globalAlpha = this.life/30; ctx.fillStyle = this.col; ctx.font = 'bold 20px sans-serif'; ctx.fillText(this.txt, this.x, this.y); ctx.globalAlpha = 1; }
+        }
+
+        // --- GAME LOGIC ---
+
+        function shootAtPlayer(bx, by) {
+            entities.bossMissiles.push(new BossMissile(bx, by, state.mouse.x, state.mouse.y));
+        }
+
+        function spawnEnemy() {
+            const stg = SETTINGS.stages[state.stageIdx];
+            entities.enemies.push(new Enemy(stg.speed));
+        }
+
+        function fireUltimate() {
+            ui.skillAlert.style.display = 'block';
+            ui.skillAlert.classList.remove('pop-anim');
+            void ui.skillAlert.offsetWidth;
+            ui.skillAlert.classList.add('pop-anim');
+            SFX.skill();
+            shakeScreen(2);
+
+            const cnt = 20; const spread = Math.PI/1.5;
+            for(let i=0; i<cnt; i++) {
+                const angle = (-spread/2) + (spread/(cnt-1))*i;
+                entities.missiles.push(new Missile(state.mouse.x, state.mouse.y - 20, angle, true));
+            }
+        }
+
+        function createBoom(x, y) { for(let i=0; i<3; i++) entities.particles.push(new Particle(x, y, 'boom')); }
+
+        function takeDamage() {
+            if(entities.player.invin > 0) return;
+            entities.player.hp--; entities.player.invin = 60; entities.player.rate = 1;
+            updateHP(); SFX.damage();
+            triggerGlitch();
+            shakeScreen(3);
+            ui.dmgOverlay.style.opacity = 0.6; setTimeout(()=>ui.dmgOverlay.style.opacity=0, 100);
+            if(entities.player.hp <= 0) endGame(false);
+        }
+
+        function updateHP() {
+            let s = "";
+            for(let i=0; i<entities.player.hp; i++) s += "❤️";
+            for(let i=entities.player.hp; i<SETTINGS.maxHp; i++) s += "🖤";
+            ui.hp.innerText = s;
+        }
+
         function startGame() {
-            document.getElementById('start-screen').classList.add('hidden');
-            isRunning = true;
+            initAudio();
+            ui.start.classList.add('hidden'); ui.fail.classList.add('hidden'); ui.clear.classList.add('hidden');
+            ui.hud.style.display = 'block'; ui.progCont.style.display = 'block'; ui.bossHud.style.display = 'none';
+            document.body.style.cursor = 'none';
+
+            state = { running: true, score: 0, nextSkill: SETTINGS.skillInterval, stageIdx: 0, mouse: state.mouse, mouseDown: false, frameCount: 0 };
+            entities = { player: { size: 40, emoji: '🚀', hp: 5, invin: 0, rate: 1 }, enemies: [], missiles: [], bossMissiles: [], particles: [], items: [], texts: [], boss: null, stars: entities.stars };
+            
+            updateHP();
+            setTheme(0);
+            ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             isPaused = false;
-            animate();
+            loop();
         }
 
-        function animate() {
-            if (!isRunning) return;
-            animationId = requestAnimationFrame(animate);
-            
-            // 배경
-            ctx.fillStyle = '#121212';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // 예시 오브젝트
-            ctx.fillStyle = '#00e5ff';
-            ctx.font = '30px serif';
-            ctx.fillText('🚀', mouse.x, mouse.y);
-            
-            // (여기에 기존 게임 루프 로직 붙여넣기)
+        function endGame(win) {
+            state.running = false;
+            document.body.style.cursor = 'default';
+            ui.bossHud.style.display = 'none';
+            if(win) { ui.clear.classList.remove('hidden'); SFX.win(); }
+            else { ui.fail.classList.remove('hidden'); SFX.hit(); }
         }
 
-        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        function loop() {
+            if(!state.running || isPaused) return;
+            requestAnimationFrame(loop);
+            state.frameCount++;
+            animationId = state.frameCount; // 단순화
+
+            ctx.clearRect(0,0,canvas.width, canvas.height);
+            
+            // 별
+            ctx.fillStyle = '#ffffff';
+            entities.stars.forEach(s => {
+                s.y += s.speed;
+                if(s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; }
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+            });
+
+            if(entities.player.invin > 0) entities.player.invin--;
+
+            const rate = Math.max(2, Math.floor(5 / entities.player.rate));
+            if(state.mouseDown && state.frameCount % rate === 0) {
+                entities.missiles.push(new Missile(state.mouse.x, state.mouse.y - 20));
+            }
+
+            if(state.score >= state.nextSkill && state.score < SETTINGS.bossScore) {
+                fireUltimate();
+                state.nextSkill += SETTINGS.skillInterval;
+            }
+
+            if(!entities.boss) state.score++;
+            ui.score.innerText = entities.boss ? "BOSS" : state.score;
+            ui.progress.style.width = `${Math.min((state.score/SETTINGS.bossScore)*100, 100)}%`;
+
+            if(!entities.boss && state.score >= SETTINGS.bossScore) {
+                entities.boss = new Boss();
+                ui.stage.innerText = "CRITICAL ERROR";
+                ui.stage.style.color = "#ff2a6d";
+                setTheme('boss');
+                ui.bossHud.style.display = 'block';
+                ui.bossBar.style.width = '100%';
+                fireUltimate();
+            } else if (!entities.boss) {
+                if(state.stageIdx < SETTINGS.stages.length - 1 && state.score >= SETTINGS.stages[state.stageIdx+1].limit) {
+                    state.stageIdx++;
+                    setTheme(state.stageIdx);
+                }
+                const stg = SETTINGS.stages[state.stageIdx];
+                ui.stage.innerText = stg.name;
+                ui.stage.style.color = stg.color;
+            }
+
+            if(state.frameCount % 5 === 0) entities.particles.push(new Particle(state.mouse.x, state.mouse.y, 'tail'));
+            entities.particles.forEach((p, i) => { p.update(); p.draw(); if(p.alpha <= 0) entities.particles.splice(i, 1); });
+
+            entities.items.forEach((it, i) => {
+                it.update(); it.draw();
+                if(Math.hypot(state.mouse.x - it.x, state.mouse.y - it.y) < entities.player.size) {
+                    SFX.powerup();
+                    entities.texts.push(new FloatingText(state.mouse.x, state.mouse.y-40, "GET!", "#0f0"));
+                    if(it.emoji === '💊' && entities.player.hp < 5) { entities.player.hp++; updateHP(); }
+                    if(it.emoji === '⚡') { entities.player.rate = 2; setTimeout(()=>entities.player.rate=1, 5000); }
+                    if(it.emoji === '🛡️') { entities.player.invin = 180; }
+                    entities.items.splice(i, 1);
+                }
+            });
+
+            ctx.globalAlpha = (entities.player.invin > 0 && Math.floor(state.frameCount/4)%2===0) ? 0.5 : 1;
+            ctx.font = `${entities.player.size}px serif`;
+            ctx.fillText(entities.player.emoji, state.mouse.x, state.mouse.y);
+            if(entities.player.invin > 60) ctx.fillText('🛡️', state.mouse.x, state.mouse.y);
+            ctx.globalAlpha = 1;
+
+            entities.missiles.forEach((m, i) => {
+                m.update(); m.draw();
+                if(m.y < -50 || m.x < -50 || m.x > canvas.width+50 || m.y > canvas.height+50) entities.missiles.splice(i, 1);
+            });
+
+            if(entities.boss) {
+                const b = entities.boss;
+                b.update(); b.draw();
+                
+                // 보스 미사일 (요격 가능)
+                entities.bossMissiles.forEach((bm, i) => {
+                    bm.update(); bm.draw();
+                    if(Math.hypot(bm.x - state.mouse.x, bm.y - state.mouse.y) < 30) {
+                        takeDamage(); entities.bossMissiles.splice(i, 1);
+                    }
+                    if(bm.y > canvas.height+50) entities.bossMissiles.splice(i, 1);
+                });
+
+                ui.bossBar.style.width = `${(b.hp/b.maxHp)*100}%`;
+
+                // 플레이어 미사일 처리 (보스 & 보스 미사일 요격)
+                entities.missiles.forEach((m, i) => {
+                    let used = false;
+                    
+                    // 1. 보스 타격
+                    if(Math.hypot(m.x - b.x, m.y - b.y) < b.size/2 + m.size) {
+                        b.hp -= m.dmg;
+                        used = true;
+                        createBoom(m.x, m.y); SFX.bossHit();
+                        shakeScreen(2);
+                        entities.texts.push(new FloatingText(m.x, m.y, m.dmg, "#ff0"));
+                        if(b.hp <= 0) { createBoom(b.x, b.y); endGame(true); }
+                    }
+
+                    // 2. 보스 미사일 요격
+                    if(!used) {
+                        entities.bossMissiles.forEach((bm, bmi) => {
+                            if(!used && Math.hypot(m.x - bm.x, m.y - bm.y) < m.size + bm.size) {
+                                bm.hp--;
+                                used = true;
+                                createBoom(bm.x, bm.y);
+                                if(bm.hp <= 0) entities.bossMissiles.splice(bmi, 1);
+                            }
+                        });
+                    }
+
+                    if(used) entities.missiles.splice(i, 1);
+                });
+
+                if(Math.hypot(state.mouse.x - b.x, state.mouse.y - b.y) < (b.size + entities.player.size)/2 * 0.8) takeDamage();
+                
+                if(state.frameCount % 50 === 0) spawnEnemy();
+
+            } else {
+                const stg = SETTINGS.stages[state.stageIdx];
+                if(state.frameCount % stg.spawn === 0) spawnEnemy();
+            }
+
+            entities.enemies.forEach((e, i) => {
+                e.update();
+                ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+                ctx.font = `${e.size}px serif`; ctx.fillText(e.emoji, 0, 0); ctx.restore();
+
+                if(e.y > canvas.height+50) e.del = true;
+
+                if(Math.hypot(state.mouse.x - e.x, state.mouse.y - e.y) < (e.size + entities.player.size)/2 * 0.7) {
+                    takeDamage(); e.del = true; createBoom(e.x, e.y);
+                }
+
+                entities.missiles.forEach((m, mi) => {
+                    if(Math.hypot(m.x - e.x, m.y - e.y) < (e.size + m.size)/2) {
+                        e.hp -= m.dmg;
+                        entities.missiles.splice(mi, 1);
+                        createBoom(e.x, e.y); SFX.hit();
+                        if(e.hp <= 0) {
+                            e.del = true; state.score += e.score;
+                            entities.texts.push(new FloatingText(e.x, e.y, `+${e.score}`, "#ff0"));
+                            shakeScreen(1);
+                            if(Math.random() < 0.1) entities.items.push(new Item(e.x, e.y));
+                        }
+                    }
+                });
+            });
+            entities.enemies = entities.enemies.filter(e => !e.del);
+
+            entities.texts.forEach((t, i) => { t.update(); t.draw(); if(t.life <= 0) entities.texts.splice(i, 1); });
+        }
+        
+        function restartGame() { startGame(); }
     </script>
 </body>
 </html>
