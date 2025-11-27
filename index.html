@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panda Universe Arcade</title>
     <style>
+        /* [스타일] 전체적인 테마: 다크 & 네온 */
         body { 
             margin: 0; background: #050505; color: white; font-family: 'Pretendard', sans-serif; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh;
             user-select: none;
         }
         
-        /* [언어 전환 버튼 스타일] */
+        /* 언어 전환 버튼 */
         .lang-switch {
             position: absolute; top: 20px; right: 30px;
             display: flex; gap: 10px; z-index: 100;
@@ -21,18 +22,26 @@
             color: #aaa; padding: 5px 15px; border-radius: 20px; cursor: pointer;
             font-weight: bold; transition: 0.3s;
         }
+        .lang-btn:hover { background: rgba(255,255,255,0.2); color: white; }
         .lang-btn.active {
             background: #00e5ff; color: #000; border-color: #00e5ff; box-shadow: 0 0 10px #00e5ff;
         }
         
+        /* 메인 타이틀 */
         h1 { 
             font-size: 3rem; margin-bottom: 50px; text-align: center;
             background: linear-gradient(to right, #00e5ff, #ff00ff); 
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+            text-transform: uppercase; letter-spacing: 2px;
         }
         
-        .game-grid { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; padding: 20px; }
+        /* 게임 목록 그리드 */
+        .game-grid { 
+            display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; 
+            padding: 20px; max-width: 1200px;
+        }
         
+        /* 게임 카드 디자인 */
         .game-card {
             width: 250px; height: 350px;
             background: rgba(255,255,255,0.05);
@@ -43,22 +52,40 @@
             position: relative; overflow: hidden;
         }
         
-        .game-card:hover { transform: translateY(-10px); background: rgba(255,255,255,0.1); box-shadow: 0 0 30px rgba(0,229,255,0.3); }
+        .game-card:hover { 
+            transform: translateY(-10px); 
+            background: rgba(255,255,255,0.1); 
+            box-shadow: 0 0 30px rgba(0,229,255,0.3); 
+            border-color: rgba(0,229,255,0.5);
+        }
         
-        .game-icon { font-size: 80px; margin-bottom: 20px; }
+        .game-icon { font-size: 80px; margin-bottom: 20px; transition: 0.3s; }
+        .game-card:hover .game-icon { transform: scale(1.1); }
+        
+        .game-info { text-align: center; z-index: 2; }
         .game-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .game-desc { font-size: 14px; color: #aaa; text-align: center; padding: 0 20px; line-height: 1.5; }
+        .game-desc { font-size: 14px; color: #aaa; padding: 0 20px; line-height: 1.5; }
         
-        .badge { position: absolute; top: 15px; right: 15px; background: #ff00ff; padding: 5px 10px; border-radius: 10px; font-size: 12px; font-weight: bold; }
+        /* 뱃지 (HOT, NEW) */
+        .badge { 
+            position: absolute; top: 15px; right: 15px; 
+            background: #ff00ff; padding: 5px 10px; border-radius: 10px; 
+            font-size: 12px; font-weight: bold; box-shadow: 0 0 10px #ff00ff;
+        }
         
-        /* 모바일 대응 */
+        /* 모바일 반응형 */
         @media (max-width: 600px) {
-            h1 { font-size: 2rem; margin-top: 50px; }
-            .game-card { width: 100%; max-width: 300px; height: 120px; flex-direction: row; justify-content: flex-start; padding-left: 20px; }
+            h1 { font-size: 2rem; margin-top: 50px; margin-bottom: 30px; }
+            .game-grid { gap: 15px; }
+            .game-card { 
+                width: 100%; max-width: 320px; height: 100px; 
+                flex-direction: row; justify-content: flex-start; padding-left: 20px; 
+            }
             .game-icon { font-size: 40px; margin-bottom: 0; margin-right: 20px; }
             .game-info { text-align: left; }
-            .game-title { font-size: 20px; margin-bottom: 5px; }
-            .game-desc { padding: 0; text-align: left; }
+            .game-title { font-size: 18px; margin-bottom: 2px; }
+            .game-desc { padding: 0; font-size: 12px; }
+            .badge { top: 10px; right: 10px; padding: 3px 8px; font-size: 10px; }
         }
     </style>
 </head>
@@ -89,24 +116,46 @@
                 <p class="game-desc" data-lang="desc2">Timing & Rhythm<br>Stacking Game</p>
             </div>
         </a>
+
+        <a href="game3.html" class="game-card">
+            <div class="badge" data-lang="badgeNew">NEW</div>
+            <div class="game-icon">🧩</div>
+            <div class="game-info">
+                <div class="game-title">ASSET MATCHER</div>
+                <p class="game-desc" data-lang="desc3">Memory & Puzzle<br>Project Organizing</p>
+            </div>
+        </a>
+
+        <a href="game4.html" class="game-card">
+            <div class="badge" data-lang="badgeNew">NEW</div>
+            <div class="game-icon">🏃</div>
+            <div class="game-info">
+                <div class="game-title">DEADLINE RUN</div>
+                <p class="game-desc" data-lang="desc4">Infinite Runner<br>Avoid Errors</p>
+            </div>
+        </a>
     </div>
 
     <script>
-        // [번역 데이터] 여기에 내용을 추가하면 됩니다.
+        // [다국어 번역 데이터]
         const translations = {
             kr: {
                 mainTitle: "판다 유니버스 아케이드",
                 badgeHot: "인기",
                 badgeNew: "신규",
                 desc1: "보스 배틀 & 액션<br>슈팅 게임",
-                desc2: "타이밍 & 리듬<br>블록 쌓기"
+                desc2: "타이밍 & 리듬<br>블록 쌓기",
+                desc3: "기억력 & 퍼즐<br>파일 정리하기",
+                desc4: "무한 러닝 액션<br>마감 사수하기"
             },
             en: {
                 mainTitle: "PANDA UNIVERSE ARCADE",
                 badgeHot: "HOT",
                 badgeNew: "NEW",
                 desc1: "Boss Battle & Action<br>Shooting Game",
-                desc2: "Timing & Rhythm<br>Stacking Game"
+                desc2: "Timing & Rhythm<br>Stacking Game",
+                desc3: "Memory & Puzzle<br>Project Organizing",
+                desc4: "Infinite Runner<br>Avoid Errors"
             }
         };
 
@@ -131,7 +180,7 @@
             elements.forEach(el => {
                 const key = el.getAttribute('data-lang');
                 if (translations[lang][key]) {
-                    el.innerHTML = translations[lang][key]; // innerHTML로 태그(<br>)까지 적용
+                    el.innerHTML = translations[lang][key]; // HTML 태그 포함 적용
                 }
             });
         }
