@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game 4: Deadline Run</title>
+    <style>
+        body { 
+            margin: 0; overflow: hidden; background-color: #050505; 
+            font-family: 'Pretendard', sans-serif; user-select: none; touch-action: none; 
+        }
+        canvas { display: block; }
+        
+        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.85); z-index: 100; transition: opacity 0.3s; }
+        .hidden { opacity: 0; pointer-events: none; }
+        .glass-panel { background: rgba(20, 20, 30, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; box-shadow: 0 0 30px rgba(255, 0, 255, 0.2); }
+        
+        h1 { font-size: 8vmin; margin: 0 0 20px 0; font-style: italic; background: linear-gradient(to right, #ff00ff, #00e5ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { color: #ccc; font-size: 4vmin; margin-bottom: 30px; }
+        button { padding: 15px 50px; font-size: 5vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.2s; background: linear-gradient(135deg, #ff00ff, #bc13fe); color: white; box-shadow: 0 0 20px rgba(255, 0, 255, 0.4); }
+        button:active { transform: scale(0.95); }
+
+        #back-btn { position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; }
+        
+        #hud { position: absolute; top: 20px; right: 20px; text-align: right; color: white; z-index: 10; font-family: monospace; }
+        .score { font-size: 30px; font-weight: bold; color: #00e5ff; }
+        .speed { font-size: 16px; color: #ff00ff; }
+
+        /* 모바일 컨트롤러 */
+        #mobile-controls {
+            position: absolute; bottom: 20px; width: 100%; display: none; justify-content: space-between; padding: 0 40px; box-sizing: border-box; z-index: 50;
+        }
+        .ctrl-btn {
+            width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); color: white; font-size: 30px; display: flex; align-items: center; justify-content: center; user-select: none;
+        }
+        .ctrl-btn:active { background: rgba(255,255,255,0.3); }
+
+        @media (hover: none) and (pointer: coarse) {
+            #mobile-controls { display: flex; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" id="back-btn">⬅ HOME</a>
+    
+    <div id="hud">
+        <div class="score">00000</div>
+        <div class="speed">SPEED: 100%</div>
+    </div>
+
+    <div id="start-screen" class="ui-screen">
+        <div class="glass-panel">
+            <h1>DEADLINE RUN</h1>
+            <p>SPACE: Jump / DOWN: Duck<br>Avoid Revisions(📨) & Errors(⚠️)</p>
+            <button onclick="startGame()">RUN!</button>
+        </div>
+    </div>
+
+    <div id="fail-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1 style="color:#ff2a6d">DEADLINE MISSED</h1>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <button onclick="startGame()">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="ctrl-btn" id="btn-duck">⬇️</div>
+        <div class="ctrl-btn" id="btn-jump">⬆️</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // 오디오
+        let audioCtx = null;
+        function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }
+        function playTone(freq, type, dur) {
+            if(!audioCtx) return;
+            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.type=type; o.frequency.value=freq;
+            g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            o.start(); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime+dur);
+            o.stop(audioCtx.currentTime+dur);
+        }
+        const SFX = {
+            jump: () => playTone(300, 'square', 0.1),
+            score: () => playTone(800, 'sine', 0.1),
+            crash: () => { playTone(100, 'sawtooth', 0.3); setTimeout(()=>playTone(50, 'sawtooth', 0.3), 100); }
+        };
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // 게임 변수
+        let gameSpeed = 5;
+        let score = 0;
+        let isRunning = false;
+        let obstacles = [];
+        let particles = [];
+        let gridOffset = 0;
+        let frame = 0;
+
+        // 플레이어 설정
+        const player = {
+            x: 50, y: 0, w: 40, h: 40,
+            dy: 0, jumpForce: 12, gravity: 0.6,
+            grounded: false, ducking: false,
+            originalH: 40, duckH: 20,
+            emoji: '🏃'
+        };
+
+        let groundHeight = 100;
+
+        function resize() { 
+            canvas.width = window.innerWidth; 
+            canvas.height = window.innerHeight; 
+            groundHeight = canvas.height * 0.25; // 화면 비율에 따라 바닥 높이 조정
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function startGame() {
+            initAudio();
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('fail-screen').classList.add('hidden');
+            
+            obstacles = [];
+            particles = [];
+            score = 0;
+            gameSpeed = 6;
+            player.y = canvas.height - groundHeight - player.h;
+            player.dy = 0;
+            isRunning = true;
+            
+            animate();
+        }
+
+        // 장애물 생성
+        function spawnObstacle() {
+            const type = Math.random() < 0.6 ? 'ground' : 'air'; // 60% 확률로 바닥 장애물
+            let obs = { x: canvas.width, w: 40, h: 40, type: type, passed: false };
+
+            if (type === 'ground') {
+                obs.y = canvas.height - groundHeight - 40;
+                obs.emoji = '📨'; // 수정 요청 (바닥)
+            } else {
+                obs.y = canvas.height - groundHeight - 90; // 점프해도 닿게 높게
+                obs.emoji = '⚠️'; // 에러 (공중 - 숙여야 함)
+                // 공중 장애물은 좀 더 높게 설정해서 '숙이기' 유도
+                // 플레이어 키(40) + 점프높이 고려
+            }
+            obstacles.push(obs);
+        }
+
+        function update() {
+            frame++;
+            gameSpeed += 0.001; // 점점 빨라짐
+            score++;
+
+            // HUD 업데이트
+            document.querySelector('.score').innerText = Math.floor(score / 10).toString().padStart(5, '0');
+            document.querySelector('.speed').innerText = `SPEED: ${Math.floor(gameSpeed * 10)}%`;
+
+            // 플레이어 물리
+            if (player.ducking) {
+                player.h = player.duckH;
+                player.emoji = '🙇';
+            } else {
+                player.h = player.originalH;
+                player.emoji = '🏃';
+            }
+
+            // 점프 및 중력
+            if (!player.ducking || !player.grounded) { // 숙인 상태에선 점프 불가
+                player.y += player.dy;
+                if (player.y + player.h < canvas.height - groundHeight) {
+                    player.dy += player.gravity;
+                    player.grounded = false;
+                } else {
+                    player.dy = 0;
+                    player.grounded = true;
+                    player.y = canvas.height - groundHeight - player.h;
+                }
+            }
+
+            // 장애물 처리
+            if (frame % Math.floor(1200 / gameSpeed) === 0) { // 속도에 따라 생성 빈도 증가
+                spawnObstacle();
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= gameSpeed;
+
+                // 충돌 처리 (AABB)
+                if (
+                    player.x < obs.x + obs.w - 10 &&
+                    player.x + player.w > obs.x + 10 &&
+                    player.y < obs.y + obs.h - 10 &&
+                    player.y + player.h > obs.y + 10
+                ) {
+                    gameOver();
+                }
+
+                // 점수 획득 이펙트
+                if (!obs.passed && obs.x + obs.w < player.x) {
+                    obs.passed = true;
+                    SFX.score();
+                }
+
+                if (obs.x + obs.w < 0) obstacles.splice(i, 1);
+            }
+
+            // 배경 그리드 이동
+            gridOffset -= gameSpeed;
+            if (gridOffset <= -100) gridOffset = 0;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 신스웨이브 바닥 (3D 원근감 효과)
+            ctx.save();
+            ctx.beginPath();
+            let horizon = canvas.height - groundHeight;
+            
+            // 바닥 그라디언트
+            let grad = ctx.createLinearGradient(0, horizon, 0, canvas.height);
+            grad.addColorStop(0, '#ff00ff22');
+            grad.addColorStop(1, '#000000');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, horizon, canvas.width, groundHeight);
+
+            // 세로선 (원근감)
+            ctx.strokeStyle = '#ff00ff44';
+            ctx.lineWidth = 2;
+            let centerX = canvas.width / 2;
+            for (let i = -10; i <= 10; i++) {
+                let x = centerX + (i * 100); 
+                // 소실점 효과
+                ctx.moveTo(centerX + (i * 20), horizon); 
+                ctx.lineTo(x * 4, canvas.height);
+            }
+            ctx.stroke();
+
+            // 가로선 (이동 효과)
+            for (let i = 0; i < 5; i++) {
+                let y = horizon + (i * (groundHeight/4)) + (gridOffset % (groundHeight/4));
+                // 원근감 보정
+                // 간단히 등간격으로 이동하는 선 그리기
+                let progress = (gridOffset % 100) / 100;
+                let lineY = horizon + Math.pow((i + progress)/5, 2) * groundHeight;
+                
+                ctx.beginPath();
+                ctx.moveTo(0, lineY);
+                ctx.lineTo(canvas.width, lineY);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // 2. 장애물
+            ctx.font = '35px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            obstacles.forEach(obs => {
+                ctx.fillText(obs.emoji, obs.x + obs.w/2, obs.y + obs.h/2);
+            });
+
+            // 3. 플레이어
+            // 그림자
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.ellipse(player.x + player.w/2, canvas.height - groundHeight + 5, 15, 5, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            ctx.font = '40px serif';
+            ctx.fillText(player.emoji, player.x + player.w/2, player.y + player.h/2 + 5);
+        }
+
+        function animate() {
+            if (!isRunning) return;
+            requestAnimationFrame(animate);
+            update();
+            draw();
+        }
+
+        function gameOver() {
+            isRunning = false;
+            SFX.crash();
+            document.getElementById('fail-screen').classList.remove('hidden');
+            document.getElementById('final-score').innerText = Math.floor(score);
+        }
+
+        // --- 컨트롤 ---
+        function jump() {
+            if (player.grounded && !player.ducking) {
+                player.dy = -player.jumpForce;
+                player.grounded = false;
+                SFX.jump();
+            }
+        }
+
+        function duck(isDucking) {
+            if (!player.grounded) return; // 공중에서 숙이기 방지
+            player.ducking = isDucking;
+        }
+
+        // 키보드
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') jump();
+            if (e.code === 'ArrowDown') duck(true);
+        });
+        window.addEventListener('keyup', e => {
+            if (e.code === 'ArrowDown') duck(false);
+        });
+
+        // 모바일 터치 버튼
+        const btnJump = document.getElementById('btn-jump');
+        const btnDuck = document.getElementById('btn-duck');
+
+        btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); jump(); });
+        btnDuck.addEventListener('touchstart', (e) => { e.preventDefault(); duck(true); });
+        btnDuck.addEventListener('touchend', (e) => { e.preventDefault(); duck(false); });
+
+    </script>
+</body>
+</html>
