@@ -2,21 +2,21 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Render Rush: v3.0</title>
+<title>Render Rush: v3.1</title>
 <style>
-/* [스타일] 더 선명해진 비주얼 */
+/* [스타일] 선명한 비주얼 */
 body{margin:0;overflow:hidden;background:radial-gradient(circle at center,#1a1a2e 0%,#000 100%);font-family:'Pretendard',sans-serif;color:white;user-select:none;touch-action:none}
 canvas{display:block}
 
-/* CRT 효과 (투명도 낮춰서 선명하게) */
+/* CRT 효과 (선명함 유지) */
 .crt-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(rgba(18,16,16,0)50%,rgba(0,0,0,0.05)50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03));background-size:100% 3px,3px 100%;pointer-events:none;z-index:999; mix-blend-mode: overlay; opacity: 0.5;}
 
-/* UI 레이어 (더 밝게) */
+/* UI 레이어 */
 .ui-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,0.6);z-index:100}
 .hidden{display:none!important}
 .glass-panel{background:rgba(30,30,50,0.9);backdrop-filter:blur(5px);border:1px solid rgba(255,255,255,0.3);border-radius:20px;padding:40px;text-align:center;width:90%;max-width:500px;box-shadow:0 0 30px rgba(0,229,255,0.3)}
 
-/* 제목에 버전 표시 */
+/* 제목 */
 h1{font-size:40px;margin:0 0 20px;color:#00e5ff;text-shadow:0 0 10px #00e5ff}
 .ver-tag{font-size:20px;color:#ff2a6d;vertical-align:middle;margin-left:10px;background:#fff;padding:2px 8px;border-radius:5px}
 
@@ -51,7 +51,7 @@ button{padding:15px 40px;font-size:20px;font-weight:bold;border:none;border-radi
 
 <div id="start-screen" class="ui-screen">
  <div class="glass-panel">
-  <h1>RENDER RUSH <span class="ver-tag">v3.0</span></h1>
+  <h1>RENDER RUSH <span class="ver-tag">v3.1</span></h1>
   <p>Survive & Shoot!<br>Every 300 PTS: Multi-Shot</p>
   <button onclick="startGame()">START RENDER</button>
  </div>
@@ -74,7 +74,7 @@ button{padding:15px 40px;font-size:20px;font-weight:bold;border:none;border-radi
 const cvs=document.getElementById('canvas'),ctx=cvs.getContext('2d');
 let w,h,state,player,entities,mouse={x:0,y:0,down:false};
 
-// 몬스터 클래스 (색상, 크기, 체력, 점수)
+// 몬스터 클래스
 class Enemy {
     constructor(x, y, type) {
         this.x = x; this.y = y; this.type = type;
@@ -122,7 +122,7 @@ function loop(){
  if(!state.run||state.paused)return;
  requestAnimationFrame(loop); state.frame++;
 
- // 시간 경과 스코어 (매 프레임 +1)
+ // 시간 경과 스코어
  state.score++;
  updateHUD();
 
@@ -138,15 +138,15 @@ function loop(){
  ctx.font='40px serif';ctx.fillText('🚀',player.x,player.y);
  ctx.globalAlpha=1;
 
- // 발사 (기본 + 300점마다 부채꼴)
+ // 발사 (300점마다 부채꼴)
  let multiShot = false;
  if(state.score - state.lastSkillScore >= 300) {
      multiShot = true;
-     state.lastSkillScore = state.score; // 다음 300점 카운트 시작
+     state.lastSkillScore = state.score;
  }
 
  if(mouse.down && state.frame%15==0){
-  let shotCount = multiShot ? 5 : 1; // 300점마다 5발 발사
+  let shotCount = multiShot ? 5 : 1; 
   let spread = 0.3;
   for(let i=0; i<shotCount; i++){
    let angle = (i - (shotCount-1)/2) * spread;
@@ -154,15 +154,15 @@ function loop(){
   }
  }
 
- // 보스 등장 (1000점)
+ // 보스 등장 (1000점) - [밸런스 패치] HP 40으로 수정
  if(state.score>=1000&&!entities.boss){
-  entities.boss={x:w/2,y:-100,hp:200,max:200,vx:2,vy:1}; // 보스 체력 200 (미사일 200방)
+  entities.boss={x:w/2,y:-100,hp:40,max:40,vx:2,vy:1};
   document.getElementById('boss-hud').style.display='block';
  }
 
- // 적 생성 (랜덤 타입)
+ // 적 생성
  if(!entities.boss&&state.frame%40==0) {
-     let type = Math.random() < 0.7 ? 'small' : 'medium'; // 70% 소형, 30% 중형
+     let type = Math.random() < 0.7 ? 'small' : 'medium';
      entities.enemies.push(new Enemy(Math.random()*w, -50, type));
  }
 
@@ -182,7 +182,7 @@ function loop(){
     e.hp-=m.dmg; entities.missiles.splice(j,1);
     if(e.hp<=0){
         entities.enemies.splice(i,1);
-        state.score+=e.score; // 몬스터 처치 추가 점수
+        state.score+=e.score;
         updateHUD();
     }
    }
