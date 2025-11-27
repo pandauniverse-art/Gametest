@@ -2,39 +2,48 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Render Rush: Boss UI Fixed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Render Rush: Mobile Ready</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #121212; font-family: 'Pretendard', sans-serif; color: white; user-select: none; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #121212; 
+            font-family: 'Pretendard', sans-serif; 
+            color: white; 
+            user-select: none; /* 텍스트 선택 방지 */
+            -webkit-user-select: none;
+            touch-action: none; /* [중요] 모바일 스크롤/줌 완전 차단 */
+        }
         canvas { display: block; }
         
         .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0, 0, 0, 0.9); z-index: 100; transition: opacity 0.5s; }
         .hidden { opacity: 0; pointer-events: none; }
         
-        h1 { font-size: 60px; margin-bottom: 20px; text-align: center; text-transform: uppercase; }
-        p.desc { font-size: 20px; color: #ccc; margin-bottom: 40px; text-align: center; line-height: 1.6; }
+        /* 모바일 폰트 크기 대응 (vmin 단위 사용) */
+        h1 { font-size: 10vmin; margin-bottom: 20px; text-align: center; text-transform: uppercase; }
+        p.desc { font-size: 4vmin; color: #ccc; margin-bottom: 40px; text-align: center; line-height: 1.6; }
         
-        button { padding: 15px 50px; font-size: 24px; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.2s; background: white; color: black; }
-        button:hover { transform: scale(1.1); background: #00e5ff; }
+        button { padding: 15px 50px; font-size: 5vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.2s; background: white; color: black; }
+        button:active { transform: scale(0.95); background: #00e5ff; } /* 모바일은 hover 대신 active */
         
         #hud-layer { position: absolute; top: 20px; left: 20px; z-index: 10; pointer-events: none; display: none; }
-        .hud-text { font-size: 24px; font-weight: bold; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .hud-text { font-size: 5vmin; font-weight: bold; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
         #stage-display { color: #ffe600; }
         #score-display { color: #00e5ff; }
-        #hp-display { font-size: 30px; margin-top: 10px; letter-spacing: 5px; }
+        #hp-display { font-size: 6vmin; margin-top: 10px; letter-spacing: 2px; }
 
         .theme-blue { color: #00e5ff; }
         .theme-red { color: #ff2a6d; }
         .theme-green { color: #00ff88; }
         
-        /* [보스 전용 체력바 UI] */
         #boss-hud {
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            width: 60%; max-width: 600px; z-index: 20; display: none; /* 평소엔 숨김 */
+            width: 80%; max-width: 600px; z-index: 20; display: none;
         }
-        #boss-name { text-align: center; font-weight: bold; font-size: 20px; margin-bottom: 5px; color: #ff2a6d; text-shadow: 0 0 10px red; }
+        #boss-name { text-align: center; font-weight: bold; font-size: 4vmin; margin-bottom: 5px; color: #ff2a6d; text-shadow: 0 0 10px red; }
         #boss-hp-container {
-            width: 100%; height: 25px; background: #333; border: 2px solid #fff; border-radius: 15px; overflow: hidden;
+            width: 100%; height: 20px; background: #333; border: 2px solid #fff; border-radius: 15px; overflow: hidden;
             box-shadow: 0 0 15px rgba(255, 42, 109, 0.5);
         }
         #boss-hp-bar {
@@ -44,7 +53,7 @@
 
         #skill-alert { 
             position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 60px; font-weight: bold; color: #fff; text-shadow: 0 0 20px #00e5ff;
+            font-size: 12vmin; font-weight: bold; color: #fff; text-shadow: 0 0 20px #00e5ff;
             pointer-events: none; display: none; z-index: 50; white-space: nowrap;
         }
         .pop-anim { animation: popUp 0.8s ease-out forwards; }
@@ -57,7 +66,7 @@
         #damage-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 90; transition: opacity 0.1s; }
         #progress-container { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; height: 10px; background: #333; border-radius: 5px; overflow: hidden; display: none; }
         #progress-bar { width: 0%; height: 100%; background: #00e5ff; transition: width 0.1s linear; }
-        #error-log { display: none; position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 20px; z-index: 999; font-size: 14px; max-width: 300px; }
+        #error-log { display: none; position: absolute; top: 10px; right: 10px; background: rgba(255, 0, 0, 0.8); color: white; padding: 20px; z-index: 999; font-size: 12px; max-width: 200px; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -74,22 +83,22 @@
     <div id="start-screen" class="ui-screen">
         <h1 class="theme-blue">RENDER RUSH <span style="font-size:40px">🚀</span></h1>
         <p class="desc">
-            <span style="color:#00e5ff">마우스 이동:</span> 조종 / <span style="color:#ffe600">좌클릭:</span> 자동 발사<br>
-            <span style="color:#d500f9">500점 마다:</span> 필살기 자동 발사<br>
+            <span style="color:#00e5ff">드래그:</span> 로켓 이동 + 자동 발사<br>
+            <span style="color:#d500f9">500점 마다:</span> 필살기<br>
             보스 처치 시 게임 클리어!
         </p>
-        <button id="start-btn">PROJECT START</button>
+        <button id="start-btn">TAP TO START</button>
     </div>
     
     <div id="fail-screen" class="ui-screen hidden">
         <h1 class="theme-red">SYSTEM CRASH 💥</h1>
-        <p class="desc">모든 시스템 리소스(HP)가 소진되었습니다.</p>
+        <p class="desc">리소스가 고갈되었습니다.</p>
         <button onclick="restartGame()">RETRY</button>
     </div>
     
     <div id="clear-screen" class="ui-screen hidden">
         <h1 class="theme-green">COMPLETE! 🎉</h1>
-        <p class="desc">메모리 누수를 해결했습니다.<br>완벽한 퇴근입니다!</p>
+        <p class="desc">성공적으로 렌더링을 마쳤습니다.</p>
         <button onclick="restartGame()">NEW PROJECT</button>
     </div>
 
@@ -103,10 +112,13 @@
     <canvas id="gameCanvas"></canvas>
 
     <script>
+        // 모바일 스크롤 방지 (매우 중요)
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+
         window.onerror = function(msg, url, line) {
             const errBox = document.getElementById('error-log');
             errBox.style.display = 'block';
-            errBox.innerHTML = `<strong>오류 발생!</strong><br>${msg}<br>Line: ${line}`;
+            errBox.innerHTML = `<strong>Error:</strong> ${msg}`;
             return false;
         };
 
@@ -151,8 +163,8 @@
         const failScreen = document.getElementById('fail-screen');
         const clearScreen = document.getElementById('clear-screen');
         const hudLayer = document.getElementById('hud-layer');
-        const bossHud = document.getElementById('boss-hud'); // 보스 HUD
-        const bossHpBar = document.getElementById('boss-hp-bar'); // 보스 HP바
+        const bossHud = document.getElementById('boss-hud');
+        const bossHpBar = document.getElementById('boss-hp-bar');
         const skillAlert = document.getElementById('skill-alert');
         const stageEl = document.getElementById('stage-display');
         const scoreEl = document.getElementById('score-display');
@@ -161,8 +173,13 @@
         const progressBar = document.getElementById('progress-bar');
         const dmgOverlay = document.getElementById('damage-overlay');
 
-        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        // [모바일 최적화] 리사이징 처리
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
         const stages = [
             { level: 1, duration: 500, spawnRate: 30, enemySpeed: 3, name: "STAGE 1: ASSET LOAD" },
@@ -177,6 +194,7 @@
         let isRunning = false; 
         let animationId; 
         let score = 0; 
+        let nextSkillTarget = SKILL_INTERVAL; 
         let currentStageIndex = 0;
         
         let mouse = { x: canvas.width/2, y: canvas.height/2 };
@@ -186,5 +204,383 @@
         let boss = null;
         let player = { size: 40, emoji: '🚀', hp: MAX_HP, invincible: 0, fireRateMod: 1 }; 
 
-        for(let i=0; i<100; i++) {
-            bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 +
+        for(let i=0; i<80; i++) { // 모바일 성능 고려 별 개수 감소
+            bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 0.5, speed: Math.random() * 3 + 1 });
+        }
+
+        // [입력 처리] 마우스 & 터치 통합
+        function handleStart(x, y) {
+            isMouseDown = true;
+            mouse.x = x; mouse.y = y;
+        }
+        function handleMove(x, y) {
+            // 터치/마우스가 화면 밖으로 나가지 않게 보정
+            mouse.x = Math.max(0, Math.min(canvas.width, x));
+            mouse.y = Math.max(0, Math.min(canvas.height, y));
+        }
+        function handleEnd() { isMouseDown = false; }
+
+        // 마우스
+        window.addEventListener('mousedown', e => handleStart(e.clientX, e.clientY));
+        window.addEventListener('mousemove', e => handleMove(e.clientX, e.clientY));
+        window.addEventListener('mouseup', handleEnd);
+        
+        // 터치 (패시브 옵션 끄기 중요)
+        window.addEventListener('touchstart', e => { 
+            handleStart(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        window.addEventListener('touchmove', e => { 
+            e.preventDefault(); // 스크롤 방지
+            handleMove(e.touches[0].clientX, e.touches[0].clientY); 
+        }, {passive: false});
+        window.addEventListener('touchend', handleEnd);
+
+        startBtn.addEventListener('click', (e) => { 
+            // 모바일 터치 시 더블 탭 확대 방지용
+            e.preventDefault(); 
+            startGame(); 
+        });
+        // 모바일 터치 대응
+        startBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startGame();
+        }, {passive: false});
+
+        class Item {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.size = 25; this.speed = 3;
+                const rand = Math.random();
+                if (rand < 0.5) { this.type = 'heal'; this.emoji = '💊'; }
+                else if (rand < 0.8) { this.type = 'speed'; this.emoji = '⚡'; }
+                else { this.type = 'shield'; this.emoji = '🛡️'; }
+            }
+            update() { this.y += this.speed; }
+            draw() { ctx.fillText(this.emoji, this.x, this.y); }
+        }
+
+        class FloatText {
+            constructor(x, y, text, color='#fff') {
+                this.x = x; this.y = y; this.text = text; this.color = color;
+                this.life = 30; this.vy = -2;
+            }
+            update() { this.y += this.vy; this.life--; }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life / 30);
+                ctx.fillStyle = this.color; ctx.font = 'bold 20px sans-serif';
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        class Boss {
+            constructor() {
+                this.x = canvas.width / 2; this.y = -100; this.targetY = canvas.height * 0.2; // 화면 비율로 위치 설정
+                this.size = 120;
+                this.hp = 3000; this.maxHp = 3000;
+                this.emoji = '👹';
+                this.speedX = 5; this.speedY = 3;
+                this.entered = false;
+            }
+            update() {
+                if (!this.entered) {
+                    this.y += 2; if (this.y >= this.targetY) this.entered = true; return;
+                }
+                this.x += this.speedX; this.y += this.speedY;
+                const margin = 60;
+                if (this.x < margin || this.x > canvas.width - margin) this.speedX *= -1;
+                if (this.y < margin || this.y > canvas.height * 0.4) this.speedY *= -1; // 모바일 화면 고려 가동 범위 축소
+                if (Math.random() < 0.02) this.speedX *= -1;
+                if (Math.random() < 0.02) this.speedY *= -1;
+            }
+            draw() {
+                ctx.font = `${this.size}px serif`;
+                ctx.fillText(this.emoji, this.x, this.y);
+            }
+        }
+
+        class Missile {
+            constructor(x, y, angle = 0, isUltimate = false) {
+                this.x = x; this.y = y;
+                this.size = isUltimate ? 30 : 20;
+                this.speed = 15;
+                this.emoji = isUltimate ? '🔥' : '⚡'; 
+                this.vx = Math.sin(angle) * this.speed;
+                this.vy = -Math.cos(angle) * this.speed;
+                this.damage = isUltimate ? 50 : 10;
+            }
+            update() { this.x += this.vx; this.y += this.vy; }
+            draw() { ctx.fillText(this.emoji, this.x, this.y); }
+        }
+
+        class Enemy {
+            constructor(speedMultiplier) {
+                this.x = Math.random() * canvas.width; this.y = -50;
+                this.size = Math.random() * 30 + 20;
+                this.speed = (Math.random() * 2 + 2) + speedMultiplier;
+                this.rotation = Math.random() * Math.PI * 2; 
+                this.spinStr = (Math.random() - 0.5) * 0.1;
+                this.markedForDeletion = false;
+
+                const rand = Math.random();
+                if (rand < 0.6) { this.type = 1; this.hp = 10; this.maxHp = 10; this.emoji = '🐛'; this.scoreVal = 10; } 
+                else if (rand < 0.9) { this.type = 2; this.hp = 20; this.maxHp = 20; this.emoji = '👾'; this.scoreVal = 20; } 
+                else { this.type = 3; this.hp = 30; this.maxHp = 30; this.emoji = '🤬'; this.scoreVal = 30; }
+            }
+            update() { this.y += this.speed; this.rotation += this.spinStr; }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rotation);
+                ctx.font = `${this.size}px serif`; ctx.fillText(this.emoji, 0, 0); ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, type = 'tail') {
+                this.x = x; this.y = y; this.opacity = 1;
+                if (type === 'explosion') {
+                    this.size = Math.random() * 15 + 10; this.emoji = '✨';
+                    this.vx = (Math.random() - 0.5) * 10; this.vy = (Math.random() - 0.5) * 10; this.decay = 0.1;
+                } else {
+                    this.size = Math.random() * 15 + 10; this.y = y + 20; this.emoji = '🔥';
+                    this.vx = 0; this.vy = 2; this.decay = 0.1;
+                }
+            }
+            update() { this.opacity -= this.decay; this.size -= 1; this.x += this.vx; this.y += this.vy; }
+            draw() { if(this.opacity < 0.1) return; ctx.globalAlpha = this.opacity; ctx.fillText(this.emoji, this.x, this.y); ctx.globalAlpha = 1; }
+        }
+
+        function startGame() {
+            try {
+                initAudio();
+                startScreen.classList.add('hidden'); failScreen.classList.add('hidden'); clearScreen.classList.add('hidden');
+                hudLayer.style.display = 'block'; progressContainer.style.display = 'block';
+                bossHud.style.display = 'none'; 
+                document.body.style.cursor = 'none';
+                
+                score = 0; 
+                nextSkillTarget = SKILL_INTERVAL; 
+                currentStageIndex = 0;
+                
+                enemies = []; particles = []; missiles = []; items = []; floatTexts = []; boss = null;
+                
+                player.hp = MAX_HP; player.invincible = 0; player.fireRateMod = 1;
+                updateHP();
+
+                isRunning = true; 
+                
+                // 모바일 터치 시작 시 자동 발사 활성화
+                isMouseDown = false; 
+                
+                ctx.font = '30px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                animate();
+            } catch(e) { alert("Error: " + e.message); }
+        }
+
+        function fireUltimate() {
+            skillAlert.style.display = 'block';
+            skillAlert.classList.remove('pop-anim');
+            void skillAlert.offsetWidth;
+            skillAlert.classList.add('pop-anim');
+            sfxSkill();
+
+            const bulletCount = 20;
+            const spreadAngle = Math.PI / 1.5; 
+            const startAngle = -spreadAngle / 2;
+            const step = spreadAngle / (bulletCount - 1);
+
+            for (let i = 0; i < bulletCount; i++) {
+                const angle = startAngle + (step * i);
+                missiles.push(new Missile(mouse.x, mouse.y - 20, angle, true));
+            }
+        }
+
+        function createExplosion(x, y) {
+            for(let i=0; i<3; i++) particles.push(new Particle(x, y, 'explosion'));
+        }
+
+        function updateHP() {
+            let hearts = "";
+            for(let i=0; i<player.hp; i++) hearts += "❤️";
+            for(let i=player.hp; i<MAX_HP; i++) hearts += "🖤";
+            hpEl.innerText = hearts;
+        }
+
+        function takeDamage() {
+            if (player.invincible > 0) return;
+            player.hp--; player.invincible = 60; player.fireRateMod = 1;
+            updateHP();
+            sfxDamage();
+            dmgOverlay.style.opacity = 0.5; setTimeout(() => dmgOverlay.style.opacity = 0, 100);
+            if (player.hp <= 0) gameOver();
+        }
+
+        function animate() {
+            if (!isRunning) return;
+            animationId = requestAnimationFrame(animate);
+
+            ctx.fillStyle = '#121212'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff';
+            bgStars.forEach(star => {
+                star.y += star.speed;
+                if(star.y > canvas.height) { star.y = 0; star.x = Math.random() * canvas.width; }
+                ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI*2); ctx.fill();
+            });
+
+            if (player.invincible > 0) player.invincible--;
+            
+            let fireRate = Math.floor(5 / player.fireRateMod); 
+            if (fireRate < 2) fireRate = 2;
+            
+            // 모바일: 터치 중이면 자동 발사
+            if (isMouseDown && score % fireRate === 0) {
+                missiles.push(new Missile(mouse.x, mouse.y - 20, 0, false));
+            }
+
+            if (score >= nextSkillTarget && score < BOSS_SPAWN_SCORE) {
+                fireUltimate();
+                nextSkillTarget += SKILL_INTERVAL;
+            }
+
+            if (!boss) score++; 
+            scoreEl.innerText = boss ? "WARNING: BOSS" : `SCORE: ${score}`;
+            progressBar.style.width = `${Math.min((score / BOSS_SPAWN_SCORE) * 100, 100)}%`;
+            
+            if (!boss && score >= BOSS_SPAWN_SCORE) {
+                boss = new Boss();
+                stageEl.innerText = "BOSS BATTLE";
+                stageEl.style.color = "#ff2a6d";
+                bossHud.style.display = 'block';
+                bossHpBar.style.width = '100%';
+                fireUltimate();
+            } else if (!boss) {
+                let currentSettings = stages[currentStageIndex];
+                stageEl.innerText = currentSettings.name;
+                stageEl.style.color = "#ffe600";
+                if (score === 601 && currentStageIndex === 0) currentStageIndex = 1;
+                if (score === 1301 && currentStageIndex === 1) currentStageIndex = 2;
+            }
+
+            // 1. 아이템
+            ctx.font = '25px serif';
+            items.forEach((item, idx) => {
+                item.update(); item.draw();
+                if(item.y > canvas.height + 50) items.splice(idx, 1);
+                let dist = Math.hypot(mouse.x - item.x, mouse.y - item.y);
+                if(dist < player.size) {
+                    sfxPowerUp();
+                    floatTexts.push(new FloatText(mouse.x, mouse.y - 40, "GET!", "#00ff88"));
+                    if(item.type === 'heal' && player.hp < MAX_HP) { player.hp++; updateHP(); }
+                    if(item.type === 'speed') { player.fireRateMod = 2; setTimeout(()=>player.fireRateMod=1, 5000); }
+                    if(item.type === 'shield') { player.invincible = 180; }
+                    items.splice(idx, 1);
+                }
+            });
+
+            // 2. 파티클
+            if (score % 5 === 0) particles.push(new Particle(mouse.x, mouse.y, 'tail'));
+            ctx.font = '20px serif';
+            particles.forEach((p, i) => {
+                p.update(); p.draw();
+                if (p.opacity <= 0 || p.size <= 0) particles.splice(i, 1);
+            });
+
+            // 3. 플레이어
+            ctx.globalAlpha = (player.invincible > 0 && player.invincible % 4 < 2) ? 0.5 : 1;
+            ctx.font = `${player.size}px serif`;
+            ctx.fillText(player.emoji, mouse.x, mouse.y);
+            if (player.invincible > 60) ctx.fillText('🛡️', mouse.x, mouse.y);
+            ctx.globalAlpha = 1;
+
+            // 4. 미사일
+            ctx.font = '20px serif';
+            missiles.forEach((m, mIdx) => {
+                m.update(); m.draw();
+                if (m.y < -50 || m.x < -50 || m.x > canvas.width+50) missiles.splice(mIdx, 1);
+            });
+
+            // 5. 보스전
+            if (boss) {
+                boss.update(); boss.draw();
+                const hpPercent = Math.max(0, boss.hp / boss.maxHp) * 100;
+                bossHpBar.style.width = `${hpPercent}%`;
+
+                missiles.forEach((m, mIdx) => {
+                    let dist = Math.hypot(m.x - boss.x, m.y - boss.y);
+                    if (dist < boss.size/2 + m.size) {
+                        missiles.splice(mIdx, 1);
+                        boss.hp -= m.damage;
+                        createExplosion(m.x, m.y);
+                        sfxHit(); 
+                        floatTexts.push(new FloatText(m.x, m.y, m.damage, "#ffea00"));
+                        
+                        if (boss.hp <= 0) {
+                            boss.hp = 0; bossHpBar.style.width = '0%';
+                            createExplosion(boss.x, boss.y); gameClear();
+                        }
+                    }
+                });
+
+                let distPlayer = Math.hypot(mouse.x - boss.x, mouse.y - boss.y);
+                if (distPlayer < (player.size/2 + boss.size/2) * 0.8) takeDamage();
+                
+                if (score % 40 === 0) enemies.push(new Enemy(5));
+            } else {
+                let currentSettings = stages[currentStageIndex];
+                if (score % currentSettings.spawnRate === 0) enemies.push(new Enemy(currentSettings.enemySpeed));
+            }
+
+            // 6. 적
+            enemies.forEach((e, eIdx) => {
+                e.update();
+                ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rotation);
+                ctx.font = `${e.size}px serif`; ctx.fillText(e.emoji, 0, 0); ctx.restore();
+
+                if (e.y > canvas.height + 50) e.markedForDeletion = true;
+                let distPlayer = Math.hypot(mouse.x - e.x, mouse.y - e.y);
+                if (distPlayer < (player.size/2 + e.size/2) * 0.7) {
+                    takeDamage(); e.markedForDeletion = true; createExplosion(e.x, e.y);
+                }
+
+                missiles.forEach((m, mIdx) => {
+                    let distMissile = Math.hypot(m.x - e.x, m.y - e.y);
+                    if (distMissile < (m.size/2 + e.size/2)) {
+                        e.hp -= m.damage;
+                        missiles.splice(mIdx, 1);
+                        createExplosion(e.x, e.y);
+                        sfxHit();
+                        
+                        if(e.hp <= 0) {
+                            e.markedForDeletion = true;
+                            score += e.scoreVal; 
+                            floatTexts.push(new FloatText(e.x, e.y, `+${e.scoreVal}`, "#ffea00"));
+                            if(Math.random() < 0.1) items.push(new Item(e.x, e.y));
+                        }
+                    }
+                });
+            });
+            enemies = enemies.filter(e => !e.markedForDeletion);
+
+            // 7. 텍스트 효과
+            floatTexts.forEach((ft, idx) => {
+                ft.update(); ft.draw();
+                if(ft.life <= 0) floatTexts.splice(idx, 1);
+            });
+        }
+
+        function gameOver() {
+            isRunning = false; cancelAnimationFrame(animationId);
+            document.body.style.cursor = 'default';
+            failScreen.classList.remove('hidden'); bossHud.style.display = 'none';
+            sfxGameOver();
+        }
+
+        function gameClear() {
+            isRunning = false; cancelAnimationFrame(animationId);
+            document.body.style.cursor = 'default';
+            clearScreen.classList.remove('hidden'); bossHud.style.display = 'none';
+            sfxGameWin();
+        }
+
+        function restartGame() { startGame(); }
+    </script>
+</body>
+</html>
