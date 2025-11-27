@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game 3: Asset Matcher</title>
+    <style>
+        body { 
+            margin: 0; background: radial-gradient(circle at center, #1a1a2e 0%, #000000 100%);
+            font-family: 'Pretendard', sans-serif; color: white; user-select: none; touch-action: manipulation;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;
+        }
+
+        /* UI 레이어 */
+        .ui-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,0.9); z-index: 100; transition: opacity 0.3s; }
+        .hidden { opacity: 0; pointer-events: none; }
+        .glass-panel { background: rgba(20, 20, 30, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; padding: 40px; text-align: center; width: 80%; max-width: 400px; box-shadow: 0 0 30px rgba(0,255,136,0.2); }
+        
+        h1 { font-size: 8vmin; margin: 0 0 20px 0; background: linear-gradient(to right, #00ff88, #00e5ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { color: #ccc; font-size: 4vmin; margin-bottom: 30px; }
+        button { padding: 15px 50px; font-size: 5vmin; font-weight: bold; border: none; border-radius: 50px; cursor: pointer; transition: 0.2s; background: linear-gradient(135deg, #00ff88, #00b8d4); color: #000; box-shadow: 0 0 20px rgba(0, 255, 136, 0.4); }
+        button:active { transform: scale(0.95); }
+
+        /* HUD */
+        #hud { position: absolute; top: 20px; display: flex; gap: 30px; font-size: 24px; font-weight: bold; color: #00ff88; z-index: 10; }
+        #back-btn { position: absolute; top: 20px; left: 20px; padding: 10px 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; border-radius: 10px; z-index: 20; }
+
+        /* 게임 그리드 */
+        #grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            perspective: 1000px; /* 3D 효과 필수 */
+            padding: 20px;
+        }
+
+        /* 카드 스타일 (3D Flip) */
+        .card {
+            width: 80px; height: 80px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s;
+            cursor: pointer;
+        }
+        .card.flipped { transform: rotateY(180deg); }
+        .card.matched { visibility: hidden; opacity: 0; transition: opacity 0.5s, visibility 0.5s; }
+
+        .card-face {
+            position: absolute; width: 100%; height: 100%;
+            backface-visibility: hidden;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 15px;
+            font-size: 40px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        /* 카드 뒷면 (커버) */
+        .card-front {
+            background: linear-gradient(135deg, #222, #333);
+            border: 2px solid #444;
+            color: #555;
+        }
+        .card-front::after { content: '?'; font-size: 30px; font-weight: bold; }
+
+        /* 카드 앞면 (내용물) */
+        .card-back {
+            background: #fff;
+            transform: rotateY(180deg);
+            border: 2px solid #00ff88;
+            background: linear-gradient(135deg, #111, #222);
+        }
+
+        /* 파티클 캔버스 */
+        #particle-canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 50; }
+
+        /* 반응형 */
+        @media (max-width: 500px) {
+            #grid-container { gap: 10px; }
+            .card { width: 18vmin; height: 18vmin; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" id="back-btn">⬅ HOME</a>
+    
+    <div id="hud">
+        <div>MOVES: <span id="move-cnt">0</span></div>
+        <div>TIME: <span id="time-cnt">0</span>s</div>
+    </div>
+
+    <canvas id="particle-canvas"></canvas>
+
+    <div id="grid-container"></div>
+
+    <div id="start-screen" class="ui-screen">
+        <div class="glass-panel">
+            <h1>ASSET MATCHER</h1>
+            <p>Find matching asset pairs.<br>Clean up your project!</p>
+            <button onclick="startGame()">SORT FILES</button>
+        </div>
+    </div>
+
+    <div id="clear-screen" class="ui-screen hidden">
+        <div class="glass-panel">
+            <h1>PROJECT CLEANED!</h1>
+            <p id="result-msg">Done in 0s</p>
+            <button onclick="startGame()">NEXT PROJECT</button>
+        </div>
+    </div>
+
+    <script>
+        // 오디오 시스템 (재사용)
+        let audioCtx = null;
+        function initAudio() { if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }
+        function playTone(freq, type, dur) {
+            if(!audioCtx) return;
+            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.type=type; o.frequency.value=freq;
+            g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            o.start(); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime+dur);
+            o.stop(audioCtx.currentTime+dur);
+        }
+        const SFX = {
+            flip: () => playTone(400, 'sine', 0.1),
+            match: () => { playTone(600, 'sine', 0.1); setTimeout(()=>playTone(1200, 'sine', 0.2), 100); },
+            win: () => { playTone(500, 'square', 0.2); setTimeout(()=>playTone(800, 'square', 0.4), 200); }
+        };
+
+        // 게임 데이터
+        // 디자이너 맞춤형 아이콘 (파일, 도구, 3D 오브젝트)
+        const assets = ['💾', '📁', '🖌️', '🎨', '🖥️', '🖱️', '📷', '🎬']; 
+        let grid = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let moves = 0;
+        let time = 0;
+        let timerInterval;
+        let isLocked = false;
+
+        const gridEl = document.getElementById('grid-container');
+        
+        // 파티클 시스템
+        const pCanvas = document.getElementById('particle-canvas');
+        const pCtx = pCanvas.getContext('2d');
+        let particles = [];
+
+        function resize() { pCanvas.width = window.innerWidth; pCanvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        function startGame() {
+            initAudio();
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('clear-screen').classList.add('hidden');
+            
+            // 초기화
+            grid = [...assets, ...assets]; // 8쌍 = 16개
+            grid.sort(() => Math.random() - 0.5); // 셔플
+            
+            gridEl.innerHTML = '';
+            flippedCards = [];
+            matchedPairs = 0;
+            moves = 0;
+            time = 0;
+            isLocked = false;
+            
+            document.getElementById('move-cnt').innerText = 0;
+            document.getElementById('time-cnt').innerText = 0;
+            
+            // 타이머 시작
+            if(timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                time++;
+                document.getElementById('time-cnt').innerText = time;
+            }, 1000);
+
+            // 카드 생성
+            grid.forEach((icon, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.index = index;
+                card.dataset.icon = icon;
+                
+                card.innerHTML = `
+                    <div class="card-face card-front"></div>
+                    <div class="card-face card-back">${icon}</div>
+                `;
+                
+                card.addEventListener('click', () => flipCard(card));
+                gridEl.appendChild(card);
+            });
+
+            loopParticles();
+        }
+
+        function flipCard(card) {
+            if (isLocked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            SFX.flip();
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            isLocked = true; // 클릭 방지
+            moves++;
+            document.getElementById('move-cnt').innerText = moves;
+
+            const [card1, card2] = flippedCards;
+            const match = card1.dataset.icon === card2.dataset.icon;
+
+            if (match) {
+                SFX.match();
+                // 파티클 효과 (카드 위치에서 터짐)
+                const rect1 = card1.getBoundingClientRect();
+                const rect2 = card2.getBoundingClientRect();
+                spawnParticles(rect1.left + rect1.width/2, rect1.top + rect1.height/2);
+                spawnParticles(rect2.left + rect2.width/2, rect2.top + rect2.height/2);
+
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    resetTurn();
+                    matchedPairs++;
+                    if (matchedPairs === assets.length) gameClear();
+                }, 500);
+            } else {
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    resetTurn();
+                }, 1000);
+            }
+        }
+
+        function resetTurn() {
+            flippedCards = [];
+            isLocked = false;
+        }
+
+        function gameClear() {
+            clearInterval(timerInterval);
+            SFX.win();
+            setTimeout(() => {
+                document.getElementById('clear-screen').classList.remove('hidden');
+                document.getElementById('result-msg').innerText = `Sorted in ${time}s (${moves} moves)`;
+            }, 500);
+        }
+
+        // --- 파티클 효과 ---
+        function spawnParticles(x, y) {
+            for(let i=0; i<20; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1,
+                    color: `hsl(${Math.random()*360}, 100%, 50%)`
+                });
+            }
+        }
+
+        function loopParticles() {
+            requestAnimationFrame(loopParticles);
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+            
+            particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                p.vy += 0.2; // 중력
+
+                pCtx.globalAlpha = p.life;
+                pCtx.fillStyle = p.color;
+                pCtx.beginPath();
+                pCtx.arc(p.x, p.y, 3, 0, Math.PI*2);
+                pCtx.fill();
+
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+        }
+    </script>
+</body>
+</html>
